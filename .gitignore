@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Convex local state and generated environment files
+.convex/
+.env*
+!.env.example
+
+# Test output
+coverage/
+*.tsbuildinfo
+
+# Local tooling
+*.log
+.DS_Store
