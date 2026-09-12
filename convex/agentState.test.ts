@@ -208,6 +208,18 @@ describe("short contractor crew", () => {
     expect((await demoState(t)).phase).toBe("awaiting_tenant_diagnosis");
   });
 
+  test("waiting notice reaches the tenant on the operations escalation path", async () => {
+    const t = await seedDemo();
+    const { tenantId } = await openTenantWork(t);
+
+    const notice = await t.mutation(internal.agentState.notifyWaitingForContractors, {});
+
+    expect(notice.personId).toBe(tenantId);
+    expect(notice.chatId).toBe("chat-tenant");
+    expect(notice.body).toMatch(/no contractors are available/i);
+    expect(notice.body).not.toMatch(/QR|Daniel/i);
+  });
+
   test("one contractor plus one quote is ready to rank", async () => {
     const t = await seedDemo();
     await openTenantWork(t);
@@ -403,6 +415,52 @@ describe("single-owner ranking and reporting", () => {
       price: 110,
       availability: "today 5pm",
       rawMessage: "Today 5pm, 110.",
+    });
+    expect(reopened.readyToEvaluate).toBe(true);
+  });
+
+  test("owner rejection clears the recommendation round marker without re-soliciting", async () => {
+    const t = await seedDemo();
+    await openTenantWork(t);
+    const contractorA = await joinContractor(t, "CONTRACTOR_A", "chat-contractor-a");
+    await giveOwnerAChat(t);
+    await t.mutation(internal.agentState.solicitOptions, { body: "Quotes please." });
+    await recordQuoteLikeBridge(t, {
+      personId: contractorA,
+      price: 120,
+      availability: "today 4pm",
+      rawMessage: "Today 4pm, 120.",
+    });
+    expect((await demoState(t)).metadata.recommendationReportedAt).toBeDefined();
+
+    await t.mutation(internal.agentState.requestApproval, {
+      reason: "Contractor A at S$120 today.",
+    });
+    const ownerId = await t.run(async (ctx) => {
+      const owner = await ctx.db
+        .query("people")
+        .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", "OWNER"))
+        .first();
+      if (!owner) {
+        throw new Error("OWNER was not seeded.");
+      }
+      return owner._id;
+    });
+    await t.mutation(internal.agentState.resolveApproval, {
+      decision: "rejected",
+      actorPersonId: ownerId,
+    });
+
+    const afterReject = await demoState(t);
+    expect(afterReject.phase).toBe("rejected_resourcing");
+    expect(afterReject.metadata.recommendationReportedAt).toBeUndefined();
+
+    // Re-rank without a fresh solicit must not be silently blocked.
+    const reopened = await t.mutation(internal.agentState.recordOption, {
+      personId: contractorA,
+      price: 95,
+      availability: "today 3pm",
+      rawMessage: "Today 3pm, 95.",
     });
     expect(reopened.readyToEvaluate).toBe(true);
   });

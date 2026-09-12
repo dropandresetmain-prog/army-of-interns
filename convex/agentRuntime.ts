@@ -439,12 +439,12 @@ function createBridge(
         await sendResolved(target);
       }
       if (targets.length === 0) {
-        const wait = (await ctx.runMutation(internal.agentState.sendIntent, {
-          roleType: "tenant",
-          body: "Daniel is ready, but no contractor has joined yet. One contractor QR scan is enough to continue.",
-          agentKind: "operations",
-          inboundPersonId,
-        })) as { personId?: Id<"people">; chatId?: string; body: string };
+        // Procurement cannot message the tenant; escalate on the operations lane instead
+        // of spoofing agentKind on sendIntent.
+        const wait = (await ctx.runMutation(
+          internal.agentState.notifyWaitingForContractors,
+          {},
+        )) as { personId?: Id<"people">; chatId?: string; body: string };
         await sendResolved(wait);
       }
       await refresh();

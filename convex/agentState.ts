@@ -715,6 +715,45 @@ export const solicitOptions = internalMutation({
   },
 });
 
+/**
+ * Operations-lane escalation when procurement solicit finds nobody to contact.
+ * Procurement may only message contractors; the tenant wait notice is owned here
+ * so the bridge never has to misreport Daniel as operations.
+ */
+export const notifyWaitingForContractors = internalMutation({
+  args: {},
+  returns: v.object({
+    personId: v.optional(v.id("people")),
+    chatId: v.optional(v.string()),
+    body: v.string(),
+  }),
+  handler: async (ctx) => {
+    const state = await getOrCreateDemoState(ctx);
+    const body =
+      "We've staffed vendor sourcing for your repair. No contractors are available to contact yet — we'll request quotes as soon as someone is available.";
+
+    let person: Doc<"people"> | null = null;
+    if (typeof state.metadata.tenantPersonId === "string") {
+      person = await ctx.db.get(state.metadata.tenantPersonId as Id<"people">);
+    }
+    if (!person) {
+      person =
+        (await ctx.db
+          .query("people")
+          .withIndex("by_role_type", (q) => q.eq("roleType", "tenant"))
+          .first()) ?? null;
+    }
+    if (!person || normalizeRoleType(person.roleType) !== "tenant") {
+      return { body };
+    }
+    return {
+      personId: person._id,
+      chatId: person.telegramChatId,
+      body,
+    };
+  },
+});
+
 export const recordOption = internalMutation({
   args: {
     personId: v.optional(v.id("people")),
@@ -1026,7 +1065,13 @@ export const resolveApproval = internalMutation({
       if (state.workItemId) {
         await ctx.db.patch(state.workItemId, { status: "blocked" });
       }
-      await ctx.db.patch(state._id, { phase: "rejected_resourcing" });
+      // Re-open the sourcing round so a later re-rank/report is not blocked waiting for
+      // solicitOptions. Manager rejection does not always re-solicit immediately.
+      const { recommendationReportedAt: _closedRound, ...openRoundMetadata } = state.metadata;
+      await ctx.db.patch(state._id, {
+        phase: "rejected_resourcing",
+        metadata: openRoundMetadata,
+      });
       return { status: "rejected", confirmed: false };
     }
 
