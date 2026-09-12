@@ -41,7 +41,12 @@ const stubBridge: AgentBridge = {
   evaluateOptions: async () => ({ winnerPersonId: null, ranked: [] }),
   reportRecommendation: async () => ({ ok: true }),
   requestApproval: async () => ({ approvalId: "a1" }),
-  resolveApproval: async () => ({ status: "approved", confirmed: true }),
+  resolveApproval: async () => ({
+    status: "approved",
+    confirmed: true,
+    selectedPersonId: "person_contractor",
+    tenantPersonId: "person_tenant",
+  }),
   verifyOutcome: async () => ({ completed: true, promotionEligible: false }),
   updateWorkContext: async () => ({ phase: "idle" }),
   recommendPromotion: async () => ({ eligible: false }),
@@ -130,6 +135,7 @@ describe("agent factory permission envelopes", () => {
     expect(names).toContain("delegate_worker");
     expect(names).toContain("request_approval");
     expect(names).toContain("resolve_approval");
+    expect(names).toContain("send_message");
     expect(names).not.toContain("solicit_options");
     expect(names).not.toContain("evaluate_options");
   });
@@ -180,7 +186,7 @@ describe("agent activity mapping", () => {
 });
 
 describe("dispatcher routing", () => {
-  it("routes tenant diagnosis to operations and contractor replies to procurement", () => {
+  it("routes by identity and phase, not semantic keywords", () => {
     expect(
       selectAgentKind({ phase: "idle", roleType: "tenant" }),
     ).toBe("manager");
@@ -191,10 +197,39 @@ describe("dispatcher routing", () => {
       }),
     ).toBe("operations");
     expect(
+      selectAgentKind({
+        phase: "awaiting_tenant_verification",
+        roleType: "tenant",
+      }),
+    ).toBe("operations");
+    expect(
       selectAgentKind({ phase: "soliciting_quotes", roleType: "contractor" }),
     ).toBe("procurement");
-    expect(selectAgentKind({ phase: "awaiting_owner_approval", ownerCommand: true })).toBe(
-      "manager",
-    );
+    expect(
+      selectAgentKind({
+        phase: "awaiting_owner_approval",
+        roleType: "business_owner",
+      }),
+    ).toBe("manager");
+    expect(
+      selectAgentKind({
+        phase: "awaiting_promotion",
+        roleType: "business_owner",
+      }),
+    ).toBe("manager");
+    expect(
+      selectAgentKind({
+        phase: "awaiting_contractor_done",
+        roleType: "contractor",
+        isSelectedContractor: true,
+      }),
+    ).toBe("operations");
+    expect(
+      selectAgentKind({
+        phase: "awaiting_contractor_done",
+        roleType: "contractor",
+        isSelectedContractor: false,
+      }),
+    ).toBe("manager");
   });
 });

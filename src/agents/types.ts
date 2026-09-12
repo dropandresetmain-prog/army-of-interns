@@ -86,6 +86,8 @@ export interface RuntimeSnapshot {
   recentEvents: RuntimeEvent[];
   pendingManagerFollowUp: boolean;
   pendingStaffingCapabilityKeys: string[];
+  selectedContractorPersonId?: string;
+  tenantPersonId?: string;
 }
 
 export interface OutboundMessage {
@@ -109,6 +111,7 @@ export const MANAGER_TOOL_NAMES = [
   "resolve_approval",
   "inspect_outcome",
   "recommend_promotion",
+  "send_message",
   "log_action",
 ] as const;
 

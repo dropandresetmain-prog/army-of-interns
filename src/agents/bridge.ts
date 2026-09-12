@@ -63,7 +63,12 @@ export interface AgentBridge {
   requestApproval: (input: { reason: string }) => Promise<{ approvalId: string }>;
   resolveApproval: (input: {
     decision: "approved" | "rejected";
-  }) => Promise<{ status: string; confirmed: boolean }>;
+  }) => Promise<{
+    status: string;
+    confirmed: boolean;
+    selectedPersonId?: string;
+    tenantPersonId?: string;
+  }>;
   verifyOutcome: (input: {
     confirmed: boolean;
     notes: string;

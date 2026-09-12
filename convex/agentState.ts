@@ -3,6 +3,12 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { selectPendingApprovalId } from "../src/agents/approvals";
+import {
+  canReportContractorCompletion,
+  canResolveApproval,
+  canVerifyOutcome,
+} from "../src/agents/authority";
 import {
   canConfirmContractor,
   DEMO_BUDGET,
@@ -197,6 +203,8 @@ const snapshotValidator = v.object({
   ),
   pendingManagerFollowUp: v.boolean(),
   pendingStaffingCapabilityKeys: v.array(v.string()),
+  selectedContractorPersonId: v.optional(v.string()),
+  tenantPersonId: v.optional(v.string()),
 });
 
 export const resetProofState = internalMutation({
@@ -281,7 +289,12 @@ export const loadRuntimeContext = internalQuery({
           .withIndex("by_work_item", (q) => q.eq("workItemId", state.workItemId!))
           .take(20)
       : [];
-    const approval = state?.approvalId ? await ctx.db.get(state.approvalId) : null;
+    const approvalId = selectPendingApprovalId({
+      phase: state?.phase ?? "idle",
+      approvalId: state?.approvalId,
+      promotionApprovalId: state?.promotionApprovalId,
+    });
+    const approval = approvalId ? await ctx.db.get(approvalId as Id<"approvals">) : null;
     const quotes = state?.workItemId
       ? await ctx.db
           .query("contractorQuotes")
@@ -353,7 +366,9 @@ export const loadRuntimeContext = internalQuery({
             selectedName:
               typeof approval.payload.selectedName === "string"
                 ? approval.payload.selectedName
-                : undefined,
+                : typeof approval.payload.proposedTitle === "string"
+                  ? approval.payload.proposedTitle
+                  : undefined,
             price:
               typeof approval.payload.price === "number" ? approval.payload.price : undefined,
             availability:
@@ -380,6 +395,11 @@ export const loadRuntimeContext = internalQuery({
       })),
       pendingManagerFollowUp: state?.metadata.pendingManagerFollowUp === true,
       pendingStaffingCapabilityKeys: asStringArray(state?.metadata.pendingStaffingCapabilityKeys),
+      selectedContractorPersonId: state?.selectedContractorPersonId,
+      tenantPersonId:
+        typeof state?.metadata.tenantPersonId === "string"
+          ? state.metadata.tenantPersonId
+          : undefined,
     };
   },
 });
@@ -557,6 +577,24 @@ export const sendIntent = internalMutation({
       person = await ctx.db
         .query("people")
         .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", args.demoCallsign!))
+        .first();
+    }
+    if (!person && args.roleType === "contractor") {
+      const state = await getOrCreateDemoState(ctx);
+      if (state.selectedContractorPersonId) {
+        person = await ctx.db.get(state.selectedContractorPersonId);
+      }
+    }
+    if (!person && args.roleType === "tenant") {
+      const state = await getOrCreateDemoState(ctx);
+      if (typeof state.metadata.tenantPersonId === "string") {
+        person = await ctx.db.get(state.metadata.tenantPersonId as Id<"people">);
+      }
+    }
+    if (!person && (args.roleType === "business_owner" || args.roleType === "owner")) {
+      person = await ctx.db
+        .query("people")
+        .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", "OWNER"))
         .first();
     }
     if (!person && args.roleType) {
@@ -816,7 +854,10 @@ export const requestApproval = internalMutation({
 });
 
 export const resolveApproval = internalMutation({
-  args: { decision: v.union(v.literal("approved"), v.literal("rejected")) },
+  args: {
+    decision: v.union(v.literal("approved"), v.literal("rejected")),
+    actorPersonId: v.optional(v.id("people")),
+  },
   returns: v.object({
     status: v.string(),
     confirmed: v.boolean(),
@@ -825,11 +866,30 @@ export const resolveApproval = internalMutation({
   }),
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
-    const approvalId = state.approvalId ?? state.promotionApprovalId;
+    const actor = args.actorPersonId ? await ctx.db.get(args.actorPersonId) : null;
+    const owner = await ctx.db
+      .query("people")
+      .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", "OWNER"))
+      .first();
+    if (
+      !canResolveApproval({
+        actorPersonId: actor?._id,
+        actorRoleType: actor?.roleType,
+        ownerPersonId: owner?._id,
+      })
+    ) {
+      throw new ConvexError("Only the registered Business Owner can resolve this approval.");
+    }
+
+    const approvalId = selectPendingApprovalId({
+      phase: state.phase,
+      approvalId: state.approvalId,
+      promotionApprovalId: state.promotionApprovalId,
+    });
     if (!approvalId) {
       throw new ConvexError("There is no pending approval.");
     }
-    const approval = await ctx.db.get(approvalId);
+    const approval = await ctx.db.get(approvalId as Id<"approvals">);
     if (!approval || approval.status !== "pending") {
       throw new ConvexError("That approval is no longer pending.");
     }
@@ -891,6 +951,7 @@ export const verifyOutcome = internalMutation({
   args: {
     confirmed: v.boolean(),
     notes: v.string(),
+    actorPersonId: v.optional(v.id("people")),
   },
   returns: v.object({
     completed: v.boolean(),
@@ -898,6 +959,20 @@ export const verifyOutcome = internalMutation({
   }),
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
+    const actor = args.actorPersonId ? await ctx.db.get(args.actorPersonId) : null;
+    const tenantId =
+      typeof state.metadata.tenantPersonId === "string"
+        ? (state.metadata.tenantPersonId as Id<"people">)
+        : undefined;
+    if (
+      !canVerifyOutcome({
+        actorPersonId: actor?._id,
+        actorRoleType: actor?.roleType,
+        tenantPersonId: tenantId,
+      })
+    ) {
+      throw new ConvexError("Only the registered Tenant can verify this outcome.");
+    }
     if (state.phase !== "awaiting_tenant_verification" || !state.workItemId) {
       throw new ConvexError("Nothing is waiting on tenant verification.");
     }
@@ -906,10 +981,27 @@ export const verifyOutcome = internalMutation({
       throw new ConvexError("Work cannot close before it is in verification.");
     }
     if (!args.confirmed) {
+      await ctx.db.insert("events", {
+        timestamp: Date.now(),
+        workerId: state.operationsWorkerId,
+        workItemId: state.workItemId,
+        eventType: "work_verified",
+        summary: "Tenant reported the outcome is not fixed.",
+        metadata: { confirmed: false, notes: args.notes.slice(0, 240) },
+      });
       await ctx.db.patch(state.workItemId, { status: "in_progress" });
       await ctx.db.patch(state._id, { phase: "awaiting_contractor_done" });
       return { completed: false, promotionEligible: false };
     }
+
+    await ctx.db.insert("events", {
+      timestamp: Date.now(),
+      workerId: state.operationsWorkerId,
+      workItemId: state.workItemId,
+      eventType: "work_verified",
+      summary: "Tenant verified the repair outcome.",
+      metadata: { confirmed: true, notes: args.notes.slice(0, 240) },
+    });
 
     await ctx.db.patch(state.workItemId, { status: "completed" });
     if (state.operationsAssignmentId) {
@@ -939,6 +1031,14 @@ export const verifyOutcome = internalMutation({
     if (state.procurementWorkerId) {
       await ctx.db.patch(state.procurementWorkerId, { status: "idle" });
     }
+    await ctx.db.insert("events", {
+      timestamp: Date.now(),
+      workerId: state.operationsWorkerId,
+      workItemId: state.workItemId,
+      eventType: "work_completed",
+      summary: "Work item completed after tenant verification.",
+      metadata: { promotionEligible },
+    });
     await ctx.db.patch(state._id, {
       phase: promotionEligible ? "awaiting_promotion" : "completed",
       metadata: {
@@ -954,11 +1054,21 @@ export const updateWorkContext = internalMutation({
   args: {
     phase: v.optional(v.string()),
     notes: v.optional(v.string()),
+    actorPersonId: v.optional(v.id("people")),
   },
   returns: v.object({ phase: v.string() }),
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
     if (args.phase === "awaiting_tenant_verification") {
+      const actor = args.actorPersonId ? await ctx.db.get(args.actorPersonId) : null;
+      if (
+        !canReportContractorCompletion({
+          actorPersonId: actor?._id,
+          selectedContractorPersonId: state.selectedContractorPersonId,
+        })
+      ) {
+        throw new ConvexError("Only the selected Contractor can report job completion.");
+      }
       if (state.phase !== "awaiting_contractor_done") {
         throw new ConvexError("Work is not waiting on contractor completion.");
       }
@@ -1001,6 +1111,13 @@ export const recommendPromotion = internalMutation({
       .first();
     if (!owner) {
       return { eligible: true };
+    }
+    if (state.promotionApprovalId) {
+      const existing = await ctx.db.get(state.promotionApprovalId);
+      if (existing && existing.status === "pending") {
+        await ctx.db.patch(state._id, { phase: "awaiting_promotion" });
+        return { approvalId: existing._id, eligible: true };
+      }
     }
     const approvalId = await ctx.db.insert("approvals", {
       workItemId: state.workItemId,

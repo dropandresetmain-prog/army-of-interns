@@ -7,9 +7,9 @@ import type { AgentBridge } from "../src/agents/bridge";
 import { activityForFallback, activityForTool } from "../src/agents/events";
 import { createManagerAgent, createWorkerAgent } from "../src/agents/factory";
 import { createOpenRouterProvider } from "../src/agents/openRouter";
+import { inboundAgentPrompt, managerFollowUpPrompt } from "../src/agents/prompts";
 import { selectAgentKind } from "../src/agents/routing";
 import type { RuntimeSnapshot } from "../src/agents/types";
-import { isContractorDone, parseOwnerCommand } from "../src/scenarios/propertyMaintenance";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalAction, type ActionCtx } from "./_generated/server";
@@ -158,8 +158,10 @@ async function runInboundAgents(
   const kind = selectAgentKind({
     phase: snapshot.phase,
     roleType: person?.roleType,
-    ownerCommand: parseOwnerCommand(input.body) !== null,
-    contractorDone: isContractorDone(input.body),
+    isSelectedContractor:
+      person?.roleType === "contractor" &&
+      snapshot.selectedContractorPersonId === person.id,
+    pendingManagerFollowUp: snapshot.pendingManagerFollowUp,
   });
 
   const inboundActivity = activityForTool({
@@ -182,7 +184,12 @@ async function runInboundAgents(
     snapshot,
     provider,
     model,
-    prompt: buildPrompt(kind, input.body, person?.roleType),
+    prompt: inboundAgentPrompt({
+      kind,
+      body: input.body,
+      roleType: person?.roleType,
+      phase: snapshot.phase,
+    }),
     chatId: input.chatId,
     inboundPersonId: input.personId,
   });
@@ -192,16 +199,15 @@ async function runInboundAgents(
   let agentName = first.agentName;
 
   if (snapshot.pendingManagerFollowUp) {
-    const pendingKeys = snapshot.pendingStaffingCapabilityKeys.join(", ");
     const follow = await runKind(ctx, {
       kind: "manager",
       snapshot,
       provider,
       model,
-      prompt:
-        pendingKeys.length > 0
-          ? `Staff the requested capability now: ${pendingKeys}. Call staff_work with those capabilityKeys, then delegate_worker once to the new intern. Then stop.`
-          : "A worker reported a recommendation. Call request_approval once if spend needs authority. Then stop.",
+      prompt: managerFollowUpPrompt({
+        phase: snapshot.phase,
+        pendingStaffingCapabilityKeys: snapshot.pendingStaffingCapabilityKeys,
+      }),
       chatId: input.chatId,
       inboundPersonId: input.personId,
     });
@@ -264,16 +270,6 @@ async function runInboundAgents(
   }
 
   return { outboundCount, usedFallback: false, agentName, model };
-}
-
-function buildPrompt(kind: "manager" | "operations" | "procurement", body: string, roleType?: string) {
-  if (kind === "manager") {
-    return `Inbound ${roleType ?? "person"} message:\n${body}\n\nDecide the next management action using your tools.`;
-  }
-  if (kind === "operations") {
-    return `Inbound ${roleType ?? "person"} message:\n${body}\n\nIf you still need a diagnosis detail, ask one question. If the tenant already described the leak pattern and a contractor is required, call request_staffing with vendor_sourcing and stop.`;
-  }
-  return `Inbound contractor message:\n${body}\n\nExtract or clarify price and availability, then record or evaluate when ready.`;
 }
 
 async function runKind(
@@ -486,17 +482,28 @@ function createBridge(
       return result;
     },
     resolveApproval: async (input) => {
-      const result = (await ctx.runMutation(internal.agentState.resolveApproval, input)) as {
+      const result = (await ctx.runMutation(internal.agentState.resolveApproval, {
+        ...input,
+        actorPersonId: inboundPersonId,
+      })) as {
         status: string;
         confirmed: boolean;
         selectedPersonId?: Id<"people">;
         tenantPersonId?: Id<"people">;
       };
       await refresh();
-      return { status: result.status, confirmed: result.confirmed };
+      return {
+        status: result.status,
+        confirmed: result.confirmed,
+        selectedPersonId: result.selectedPersonId,
+        tenantPersonId: result.tenantPersonId,
+      };
     },
     verifyOutcome: async (input) => {
-      const result = (await ctx.runMutation(internal.agentState.verifyOutcome, input)) as {
+      const result = (await ctx.runMutation(internal.agentState.verifyOutcome, {
+        ...input,
+        actorPersonId: inboundPersonId,
+      })) as {
         completed: boolean;
         promotionEligible: boolean;
       };
@@ -504,7 +511,10 @@ function createBridge(
       return result;
     },
     updateWorkContext: async (input) => {
-      const result = (await ctx.runMutation(internal.agentState.updateWorkContext, input)) as {
+      const result = (await ctx.runMutation(internal.agentState.updateWorkContext, {
+        ...input,
+        actorPersonId: inboundPersonId,
+      })) as {
         phase: string;
       };
       await refresh();

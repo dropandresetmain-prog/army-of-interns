@@ -115,7 +115,7 @@ export function createUpdateWorkContextTool(bridge: AgentBridge): Tool {
   return tool({
     name: "update_work_context",
     description:
-      "Update permitted work context. Use phase awaiting_tenant_verification after a contractor reports DONE.",
+      "Update permitted work context. Use phase awaiting_tenant_verification after the selected contractor clearly reports completion.",
     parameters: z.object({
       phase: z.string().optional(),
       notes: z.string().optional(),
@@ -183,7 +183,7 @@ export function createVerifyOutcomeTool(bridge: AgentBridge): Tool {
   return tool({
     name: "verify_outcome",
     description:
-      "Record whether the affected stakeholder confirmed the outcome. Contractor DONE is not enough.",
+      "Record whether the affected stakeholder confirmed the outcome. Contractor completion is not enough.",
     parameters: z.object({
       confirmed: z.boolean(),
       notes: z.string(),
@@ -309,7 +309,7 @@ export function createResolveApprovalTool(bridge: AgentBridge): Tool {
   return tool({
     name: "resolve_approval",
     description:
-      "Resolve a pending approval. Contractor confirmation is impossible unless status becomes approved.",
+      "Resolve the pending approval for the current phase. During awaiting_promotion this is the promote_worker approval, not a historical spend approval. Contractor confirmation is impossible unless spend status becomes approved.",
     parameters: z.object({
       decision: z.enum(["approved", "rejected"]),
     }),
@@ -354,6 +354,7 @@ const MANAGER_TOOL_BUILDERS: Array<(bridge: AgentBridge) => Tool> = [
   createResolveApprovalTool,
   createInspectOutcomeTool,
   createRecommendPromotionTool,
+  createSendMessageTool,
   createLogActionTool,
 ];
 

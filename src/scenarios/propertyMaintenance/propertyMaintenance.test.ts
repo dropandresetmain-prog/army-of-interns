@@ -6,10 +6,12 @@ import { PROMOTION_SUCCESS_THRESHOLD } from "./identities";
 import {
   canConfirmContractor,
   evaluateContractorOptions,
+  interpretTenantVerificationFallback,
+  isNegativeTenantVerification,
   isPromotionRecommended,
   isTenantVerification,
 } from "./rankQuotes";
-import { nextContractorIdentity, parseStartRole } from "./registration";
+import { nextContractorIdentity, parseStartRole, resolveContractorRegistration } from "./registration";
 
 describe("demo role registration", () => {
   it("parses /start payloads", () => {
@@ -24,6 +26,32 @@ describe("demo role registration", () => {
     expect(nextContractorIdentity(1)?.displayName).toBe("Contractor B");
     expect(nextContractorIdentity(2)?.displayName).toBe("Contractor C");
     expect(nextContractorIdentity(3)).toBeNull();
+  });
+
+  it("reuses the same Telegram chat instead of consuming another contractor slot", () => {
+    const first = resolveContractorRegistration({
+      chatId: "chat-x",
+      existingContractors: [],
+    });
+    expect(first).toEqual({
+      action: "assign",
+      identity: { displayName: "Contractor A", demoCallsign: "CONTRACTOR_A" },
+    });
+
+    const replay = resolveContractorRegistration({
+      chatId: "chat-x",
+      existingContractors: [{ telegramChatId: "chat-x", displayName: "Contractor A" }],
+    });
+    expect(replay).toEqual({ action: "reuse", displayName: "Contractor A" });
+
+    const secondChat = resolveContractorRegistration({
+      chatId: "chat-y",
+      existingContractors: [{ telegramChatId: "chat-x", displayName: "Contractor A" }],
+    });
+    expect(secondChat).toMatchObject({
+      action: "assign",
+      identity: { displayName: "Contractor B" },
+    });
   });
 });
 
@@ -75,6 +103,10 @@ describe("approval, verification, and promotion invariants", () => {
     expect(isContractorDone("DONE")).toBe(true);
     expect(isTenantVerification("DONE")).toBe(false);
     expect(isTenantVerification("yes fixed")).toBe(true);
+    expect(isNegativeTenantVerification("still leaking")).toBe(true);
+    expect(interpretTenantVerificationFallback("still leaking")).toBe(false);
+    expect(interpretTenantVerificationFallback("all good now")).toBe(true);
+    expect(interpretTenantVerificationFallback("maybe later")).toBeNull();
   });
 
   it("recommends promotion at the third successful assignment", () => {

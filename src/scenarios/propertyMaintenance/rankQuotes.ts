@@ -95,6 +95,24 @@ export function isTenantVerification(text: string): boolean {
   );
 }
 
+/** Runtime fallback only. The successful path uses the operations agent. */
+export function isNegativeTenantVerification(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return /\b(still leaking|not fixed|same problem|started again|still broken|no,? same|isn't fixed|isnt fixed)\b/.test(
+    normalized,
+  );
+}
+
+export function interpretTenantVerificationFallback(text: string): boolean | null {
+  if (isNegativeTenantVerification(text)) {
+    return false;
+  }
+  if (isTenantVerification(text)) {
+    return true;
+  }
+  return null;
+}
+
 export function isPromotionRecommended(
   successfulTasks: number,
   threshold = 3,

@@ -40,6 +40,8 @@ function compactSnapshot(snapshot: RuntimeSnapshot): string {
       title: worker.title,
       status: worker.status,
       capabilities: worker.capabilityKeys,
+      successfulTasks: worker.successfulTasks,
+      promotionEligible: worker.promotionEligible,
     })),
     people: snapshot.people.map((person) => ({
       name: person.displayName,
@@ -47,6 +49,8 @@ function compactSnapshot(snapshot: RuntimeSnapshot): string {
       callsign: person.demoCallsign ?? null,
     })),
     approval: snapshot.approval ?? null,
+    selectedContractorPersonId: snapshot.selectedContractorPersonId ?? null,
+    tenantPersonId: snapshot.tenantPersonId ?? null,
     quotes: snapshot.quotes,
     messages,
     events,
@@ -73,8 +77,12 @@ export function instructionsForWorker(
     ? [
         `${worker.name} is the General Manager. Permanent. Calm, concise, pragmatic, lightly cheeky.`,
         "Manage outcomes. Staff once, then delegate_worker once. Do not keep inspecting.",
-        "After a worker reports a recommendation, request approval. After verified success, consider promotion.",
-        "Do not contain scenario-specific trade instructions. Use the supplied runtime context.",
+        "Interpret human messages yourself. Exact APPROVE, REJECT, PROMOTE, or DONE are optional shortcuts, not required.",
+        "After a worker reports a recommendation, request approval and send_message the Business Owner.",
+        "After an approved spend, send_message the selected contractor and tenant. Never notify a contractor before approval.",
+        "After verified success, if a worker is promotion-eligible, call recommend_promotion and send_message the owner a natural recommendation.",
+        "If owner intent is unclear, send_message one concise clarification. Do not invent approvals.",
+        "Do not include internal IDs in human-facing messages. Use the supplied runtime context.",
       ].join("\n")
     : [
         `You are ${worker.name}, ${worker.title} (${worker.employmentType}).`,

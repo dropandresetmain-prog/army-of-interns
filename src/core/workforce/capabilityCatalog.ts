@@ -66,6 +66,7 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       standingInstructions: [
         "Stay within assigned capabilities and tool permissions.",
         "Ask useful follow-up questions, then act.",
+        "Interpret natural stakeholder messages; canned phrases are optional shortcuts.",
         "Request staffing when work falls outside the capability envelope.",
         "Escalate actions that require human authority.",
       ],
@@ -121,6 +122,7 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       communicationStyle: "Short structured questions; record replies faithfully.",
       standingInstructions: [
         "Solicit options without committing spend.",
+        "Extract price and availability from natural vendor replies.",
         "Ask one clarification if price or availability is missing.",
         "Never approve spend or confirm a paid engagement.",
       ],

@@ -21,9 +21,16 @@ export type { ExtractedContractorQuote } from "./extractQuote";
 export {
   canConfirmContractor,
   evaluateContractorOptions,
+  interpretTenantVerificationFallback,
+  isNegativeTenantVerification,
   isPromotionRecommended,
   isTenantVerification,
   quoteMeetsDeadline,
 } from "./rankQuotes";
 export type { RankableQuote, RankedQuote } from "./rankQuotes";
-export { nextContractorIdentity, parseStartRole, registrationProfile } from "./registration";
+export {
+  nextContractorIdentity,
+  parseStartRole,
+  registrationProfile,
+  resolveContractorRegistration,
+} from "./registration";

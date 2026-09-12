@@ -15,18 +15,23 @@ import {
   DEMO_TENANT,
   evaluateContractorOptions,
   extractContractorQuote,
+  interpretTenantVerificationFallback,
   isContractorDone,
   isPromotionRecommended,
-  isTenantVerification,
   looksLikeWorkRequest,
-  nextContractorIdentity,
   parseOwnerCommand,
   parseStartRole,
   PROMOTION_SUCCESS_THRESHOLD,
+  resolveContractorRegistration,
   SEEDED_OPS_SUCCESSFUL_TASKS,
   TENANT_FOLLOW_UP,
 } from "../src/scenarios/propertyMaintenance";
 import { analyzeRequiredCapabilities } from "../src/core/workforce";
+import {
+  canReportContractorCompletion,
+  canResolveApproval,
+  canVerifyOutcome,
+} from "../src/agents/authority";
 import { persistIntakeAndStaff, persistStaffCapabilities } from "./workforce";
 import { persistBootstrapDemo, resetTransientDemoRecords } from "./seed";
 
@@ -213,7 +218,7 @@ export async function persistTelegramRole(
           {
             personId,
             chatId: args.chatId,
-            body: "Registered as Tim / Business Owner. Commands: APPROVE, REJECT, PROMOTE.",
+            body: "Registered as Tim / Business Owner. Reply in your own words when a recommendation is ready.",
           },
         ],
       };
@@ -252,23 +257,41 @@ export async function persistTelegramRole(
       };
     }
 
-    const existingContractors = await contractors(ctx);
-    const already = existingContractors.find((person) => person.telegramChatId === args.chatId);
-    if (already && existingContractors.length >= 3) {
-      return {
-        handled: true,
-        outbounds: [
-          {
-            personId: already._id,
-            chatId: args.chatId,
-            body: `Already registered as ${already.displayName}.`,
-          },
-        ],
-      };
+    const matches = await ctx.db
+      .query("people")
+      .withIndex("by_telegram_chat_id", (q) => q.eq("telegramChatId", args.chatId))
+      .take(20);
+    const alreadyContractor = matches.find((person) => person.roleType === "contractor");
+    const existingContractors = await ctx.db
+      .query("people")
+      .withIndex("by_role_type", (q) => q.eq("roleType", "contractor"))
+      .take(20);
+    const occupied = existingContractors.filter((person) => person.active);
+    const resolved = resolveContractorRegistration({
+      chatId: args.chatId,
+      existingContractors: occupied.map((person) => ({
+        telegramChatId: person.telegramChatId,
+        displayName: person.displayName,
+      })),
+    });
+
+    if (alreadyContractor || resolved.action === "reuse") {
+      const person = alreadyContractor ?? occupied.find((row) => row.telegramChatId === args.chatId);
+      if (person) {
+        return {
+          handled: true,
+          outbounds: [
+            {
+              personId: person._id,
+              chatId: args.chatId,
+              body: `Already registered as ${person.displayName}.`,
+            },
+          ],
+        };
+      }
     }
 
-    const next = nextContractorIdentity(existingContractors.length);
-    if (!next) {
+    if (resolved.action !== "assign") {
       return {
         handled: true,
         outbounds: [
@@ -280,13 +303,24 @@ export async function persistTelegramRole(
       };
     }
 
-    const personId = await ctx.db.insert("people", {
+    const next = resolved.identity;
+    const reusableParticipant = matches.find((person) => person.roleType !== "contractor");
+    const personId =
+      reusableParticipant?._id ??
+      (await ctx.db.insert("people", {
+        displayName: next.displayName,
+        roleType: "contractor",
+        demoCallsign: next.demoCallsign,
+        telegramChatId: args.chatId,
+        active: true,
+        scenarioMetadata: { source: "telegram_start" },
+      }));
+    await ctx.db.patch(personId, {
       displayName: next.displayName,
       roleType: "contractor",
       demoCallsign: next.demoCallsign,
       telegramChatId: args.chatId,
       active: true,
-      scenarioMetadata: { source: "telegram_start" },
     });
 
     return {
@@ -381,13 +415,38 @@ export const routeInbound = internalMutation({
 
     const state = await getOrCreateDemoState(ctx);
     const person = message.personId ? await ctx.db.get(message.personId) : null;
+    const owner = await ctx.db
+      .query("people")
+      .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", "OWNER"))
+      .first();
+    const tenantId =
+      typeof state.metadata.tenantPersonId === "string"
+        ? (state.metadata.tenantPersonId as Id<"people">)
+        : undefined;
     const ownerCommand = parseOwnerCommand(message.body);
 
     if (ownerCommand) {
+      if (
+        !canResolveApproval({
+          actorPersonId: person?._id,
+          actorRoleType: person?.roleType,
+          ownerPersonId: owner?._id,
+        })
+      ) {
+        return { handled: true, outbounds: [{ chatId: args.chatId, body: "Noted." }] };
+      }
       return await handleOwnerCommand(ctx, state, args.chatId, ownerCommand);
     }
 
     if (isContractorDone(message.body)) {
+      if (
+        !canReportContractorCompletion({
+          actorPersonId: person?._id,
+          selectedContractorPersonId: state.selectedContractorPersonId,
+        })
+      ) {
+        return { handled: true, outbounds: [{ chatId: args.chatId, body: "Noted." }] };
+      }
       return await handleContractorDone(ctx, state, args.chatId);
     }
 
@@ -416,8 +475,20 @@ export const routeInbound = internalMutation({
       return await handleTenantDiagnosis(ctx, state, args.chatId, message.body);
     }
 
-    if (state.phase === "awaiting_tenant_verification" && isTenantVerification(message.body)) {
-      return await handleTenantVerification(ctx, state, args.chatId);
+    if (state.phase === "awaiting_tenant_verification") {
+      const verdict = interpretTenantVerificationFallback(message.body);
+      if (verdict !== null) {
+        if (
+          !canVerifyOutcome({
+            actorPersonId: person?._id,
+            actorRoleType: person?.roleType,
+            tenantPersonId: tenantId,
+          })
+        ) {
+          return { handled: true, outbounds: [{ chatId: args.chatId, body: "Noted." }] };
+        }
+        return await handleTenantVerification(ctx, state, args.chatId, verdict);
+      }
     }
 
     const tenant =
@@ -752,8 +823,8 @@ async function handleOwnerCommand(
   chatId: string,
   command: "APPROVE" | "REJECT" | "PROMOTE",
 ) {
-  if (command === "PROMOTE") {
-    return await handlePromote(ctx, state, chatId);
+  if (command === "PROMOTE" || state.phase === "awaiting_promotion") {
+    return await handlePromote(ctx, state, chatId, command === "REJECT" ? "rejected" : "approved");
   }
 
   if (state.phase !== "awaiting_owner_approval" || !state.approvalId) {
@@ -883,6 +954,7 @@ async function handleTenantVerification(
   ctx: MutationCtx,
   state: Doc<"demoState">,
   chatId: string,
+  confirmed = true,
 ) {
   if (state.phase !== "awaiting_tenant_verification" || !state.workItemId) {
     return { handled: true, outbounds: [{ chatId, body: "Nothing is waiting on tenant verification." }] };
@@ -896,12 +968,28 @@ async function handleTenantVerification(
     };
   }
 
+  if (!confirmed) {
+    await emit(ctx, {
+      workItemId: state.workItemId,
+      workerId: state.operationsWorkerId,
+      eventType: "work_verified",
+      summary: "Tenant reported the outcome is not fixed.",
+      metadata: { verifiedBy: "tenant", confirmed: false },
+    });
+    await ctx.db.patch(state.workItemId, { status: "in_progress" });
+    await ctx.db.patch(state._id, { phase: "awaiting_contractor_done" });
+    return {
+      handled: true,
+      outbounds: [{ chatId, body: "Understood — we will not close this until it is actually fixed." }],
+    };
+  }
+
   await emit(ctx, {
     workItemId: state.workItemId,
     workerId: state.operationsWorkerId,
     eventType: "work_verified",
     summary: "Tenant verified the repair outcome.",
-    metadata: { verifiedBy: "tenant" },
+    metadata: { verifiedBy: "tenant", confirmed: true },
   });
 
   await ctx.db.patch(state.workItemId, { status: "completed" });
@@ -997,6 +1085,7 @@ async function handlePromote(
   ctx: MutationCtx,
   state: Doc<"demoState">,
   chatId: string,
+  decision: "approved" | "rejected" = "approved",
 ) {
   if (!state.promotionApprovalId || !state.operationsWorkerId) {
     return { handled: true, outbounds: [{ chatId, body: "There is no pending promotion." }] };
@@ -1005,6 +1094,21 @@ async function handlePromote(
   const worker = await ctx.db.get(state.operationsWorkerId);
   if (!approval || !worker) {
     return { handled: true, outbounds: [{ chatId, body: "Promotion records are missing." }] };
+  }
+  if (decision === "rejected") {
+    await ctx.db.patch(approval._id, { status: "rejected", resolvedAt: Date.now() });
+    await ctx.db.patch(state._id, { phase: "completed" });
+    await emit(ctx, {
+      workItemId: state.workItemId,
+      workerId: worker._id,
+      eventType: "approval_resolved",
+      summary: "Owner declined the promotion.",
+      metadata: { decision: "rejected", actionType: "promote_worker" },
+    });
+    return {
+      handled: true,
+      outbounds: [{ chatId, body: `${worker.name} remains in the current role.` }],
+    };
   }
   await ctx.db.patch(approval._id, { status: "approved", resolvedAt: Date.now() });
   await ctx.db.patch(worker._id, {

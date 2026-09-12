@@ -38,6 +38,26 @@ export function nextContractorIdentity(existingContractorCount: number): {
   };
 }
 
+export function resolveContractorRegistration(input: {
+  chatId: string;
+  existingContractors: Array<{ telegramChatId?: string; displayName: string }>;
+}):
+  | { action: "reuse"; displayName: string }
+  | { action: "assign"; identity: NonNullable<ReturnType<typeof nextContractorIdentity>> }
+  | { action: "full" } {
+  const already = input.existingContractors.find(
+    (person) => person.telegramChatId === input.chatId,
+  );
+  if (already) {
+    return { action: "reuse", displayName: already.displayName };
+  }
+  const identity = nextContractorIdentity(input.existingContractors.length);
+  if (!identity) {
+    return { action: "full" };
+  }
+  return { action: "assign", identity };
+}
+
 export function registrationProfile(role: DemoRole): {
   displayName: string;
   roleType: string;
