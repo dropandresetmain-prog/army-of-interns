@@ -428,32 +428,39 @@ Scenario-specific data such as contractor response fields should live behind the
 
 Milestones are evidence-based checkpoints. Do not advance merely because code exists; advance when the exit criteria pass.
 
-```text
-SHARED
-S1 Project Skeleton & Contracts
-        ↓
-S2 Messaging & Realtime Spine
-        ↓
-S3 Generic Workforce Kernel
-        ↓
-S4 Genericity Proof & Foundation Freeze
-        ↓
-        ┌───────────────────────────────┐
-        │                               │
-        ▼                               ▼
-LANE A — RUNTIME                  LANE B — EXPERIENCE
-A1 Runtime Adapter               B1 Visual Foundation
-A2 External Execution            B2 Live Participation
-A3 Authority + Verification      B3 Workflow Theatre
-A4 Workforce Evolution           B4 Presentation Polish
-        │                               │
-        └──────── integration ──────────┘
+**Hackathon time is severely constrained.** After S1–S3, remaining work follows this compressed critical path — not the earlier multi-milestone ceremony:
 
-I1 Generic Workforce Integration
-I2 Live Human Execution Integration
-I3 Verified Outcome Integration
-I4 Demo Freeze / Submission Ready
+```text
+S4 Foundation Review & Freeze
+        ↓
+        SPLIT
+   ┌─────────────┐
+   │             │
+   ▼             ▼
+LANE A         LANE B
+Runtime        Experience
+Mission        Mission
+   │             │
+   └──────┬──────┘
+          ▼
+FULL DEMO INTEGRATION
+          ↓
+REJECTION PATH
+          ↓
+HAPPY PATH
+          ↓
+FEATURE FREEZE
+          ↓
+POLISH / REHEARSE / SUBMISSION
 ```
+
+Completed shared foundation (do not reopen unless an Act Now contract blocker appears):
+
+- S1 Project Skeleton & Contracts
+- S2 Messaging & Realtime Spine
+- S3 Generic Workforce Kernel
+
+Detailed A1–A4 / B1–B4 / I1–I3 checklists below remain as **technical reference only**. For the hackathon they are **compressed into one execution mission per lane**, then one continuous full-demo integration pass.
 
 ---
 
@@ -572,13 +579,22 @@ S2.
 
 ---
 
-## S4 — Genericity Proof & Foundation Freeze
+## S4 — Foundation Review, Plan Compression & Freeze
 
 ### Objective
 
-Prove the kernel is genuinely generic and freeze the contracts before parallel work begins.
+Perform one bounded architecture/domain review of the S1–S3 foundation, compress the remaining execution plan for the time left, fix only issues that genuinely block lane splitting, then **freeze shared contracts**.
 
-### Required genericity tests
+This is the single formal review before the project splits into parallel lanes. It is **not** a broad refactor or documentation exercise.
+
+### Required work
+
+1. Update this plan to the compressed critical path (section 8 and post-split missions).
+2. Bounded review of genericity, worker persistence/reuse, capabilities/permissions, shared contracts, event vocabulary, lane independence, and Twilio readiness.
+3. Fix only Act Now blockers (broken shared contracts, genericity violations, likely corruption/duplicate execution, demo-architecture impossibilities, obvious live-demo security/privacy issues).
+4. Freeze schema/domain/event/public Convex interfaces for both lanes.
+
+### Required genericity evidence (already covered by S3 verification; re-confirm in S4)
 
 Request A:
 
@@ -606,16 +622,23 @@ WorkItem
 → assignment
 ```
 
+### Twilio readiness during S4
+
+S2 transport code exists. If live Twilio/Convex cloud credentials are unavailable, do **not** redesign the foundation. Classify live WhatsApp round-trip proof as **Act Now — first Lane A integration task** (external operational dependency).
+
 ### Exit criteria
 
-- no orchestration-code changes between A and B;
-- worker reuse test passes;
-- event stream represents both flows generically;
-- both flows render through the same basic UI components;
-- shared schema/types/event payloads are reviewed and committed;
-- a single passing commit is designated the **foundation checkpoint**.
+- implementation plan reflects the compressed execution strategy;
+- no Act Now shared-contract blocker remains;
+- maintenance and marketing use the same generic pipeline;
+- worker reuse is proven;
+- shared schema/domain/event contracts are coherent enough to freeze;
+- runtime/UI lane boundary is clear;
+- remaining Twilio operational dependency is either proven or explicitly assigned to Lane A;
+- required checks pass (`npm test`, typecheck, build, verify:convex / s2 / s3);
+- `main` is pushed with verdict **FOUNDATION FROZEN — READY TO SPLIT**.
 
-Only after S4 passes may the implementation split into two lanes.
+Only after S4 passes may the implementation split into two lanes. **Do not create lane branches inside S4.**
 
 ### Dependency
 
@@ -671,13 +694,44 @@ Do not evolve separate incompatible versions of shared schema/types/events.
 
 ---
 
-# 11. Lane A milestones — Workforce Runtime, Tools & Messaging
+# 11. Lane A — Runtime Mission (compressed)
 
 Lane A owns runtime/orchestration, tools, Twilio workflow processing, approvals, verification, workforce evolution, scenario adapter logic, and runtime/integration tests.
 
 Lane A does **not** own visual rendering, React Flow, presentation-mode UI, or animation behavior.
 
-## A1 — Runtime Adapter & Generic Manager
+## Hackathon mission (authoritative)
+
+One mission for the remaining time:
+
+> Make the real WhatsApp property-maintenance scenario execute end-to-end through the generic workforce kernel.
+
+Keep only what materially serves the demo:
+
+- runtime/model adapter;
+- Alex manager;
+- worker execution;
+- Tenant interaction;
+- procurement worker;
+- 3 Contractor messages;
+- natural response parsing;
+- simple deterministic option selection;
+- owner APPROVE / REJECT;
+- selected contractor confirmation;
+- Tenant update;
+- completion;
+- Tenant verification;
+- promotion state.
+
+**First Act Now task if live Twilio was not proven in S4:** prove `WhatsApp → Twilio → public Convex` and `public Convex → Twilio → WhatsApp` with real credentials. This is an external operational dependency, not a foundation redesign.
+
+Avoid expanding abstractions. Prefer the smallest path that completes the live demo flow.
+
+### Compressed technical reference (A1–A4)
+
+The subsections below are **reference detail** from the earlier multi-milestone plan. They are **not** separate hackathon gates. Deliver outcomes as one continuous Runtime Mission.
+
+## A1 — Runtime Adapter & Generic Manager *(reference)*
 
 ### Objective
 
@@ -709,7 +763,7 @@ S4.
 
 ---
 
-## A2 — External Human Execution
+## A2 — External Human Execution *(reference)*
 
 ### Objective
 
@@ -739,7 +793,7 @@ A1.
 
 ---
 
-## A3 — Human Authority & Verified Outcome
+## A3 — Human Authority & Verified Outcome *(reference)*
 
 ### Objective
 
@@ -780,7 +834,7 @@ A2.
 
 ---
 
-## A4 — Workforce Evolution & Runtime Hardening
+## A4 — Workforce Evolution & Runtime Hardening *(reference)*
 
 ### Objective
 
@@ -810,13 +864,32 @@ A3.
 
 ---
 
-# 12. Lane B milestones — Live Command Centre & Demo Theatre
+# 12. Lane B — Experience Mission (compressed)
 
 Lane B owns the visual system, realtime org chart, work views, event feed, participant lobby, scenario response board, status visuals, promotion sequence, presentation mode, and UI verification.
 
 Lane B does **not** own agent prompts, runtime/provider SDKs, Twilio workflow processing, business-rule evaluation, approval enforcement, or permission enforcement.
 
-## B1 — Visual Foundation & Generic Workforce Views
+## Hackathon mission (authoritative)
+
+One mission for the remaining time:
+
+> Make the workforce evolution and live execution understandable and memorable.
+
+Prioritise **only four strong surfaces**:
+
+1. realtime org chart;
+2. AI Operations Feed;
+3. active work / quote / approval state;
+4. promotion payoff.
+
+Keep the participant join UI minimal. Do not expand into a full product UI.
+
+### Compressed technical reference (B1–B4)
+
+The subsections below are **reference detail** from the earlier multi-milestone plan. They are **not** separate hackathon gates. Deliver outcomes as one continuous Experience Mission.
+
+## B1 — Visual Foundation & Generic Workforce Views *(reference)*
 
 ### Objective
 
@@ -846,7 +919,7 @@ S4.
 
 ---
 
-## B2 — Live Participation & Scenario Surfaces
+## B2 — Live Participation & Scenario Surfaces *(reference)*
 
 ### Objective
 
@@ -876,7 +949,7 @@ B1.
 
 ---
 
-## B3 — Workflow Theatre & Explainability
+## B3 — Workflow Theatre & Explainability *(reference)*
 
 ### Objective
 
@@ -911,7 +984,7 @@ B2.
 
 ---
 
-## B4 — Promotion Payoff & Presentation Polish
+## B4 — Promotion Payoff & Presentation Polish *(reference)*
 
 ### Objective
 
@@ -951,86 +1024,45 @@ B3.
 
 ---
 
-# 13. Integration milestones — both lanes stop and test
+# 13. Full demo integration (compressed) — both lanes stop and test
 
-These are mandatory. Neither lane should disappear until final merge.
+I1/I2/I3 from the earlier plan are **collapsed into one continuous full-demo integration pass**. Neither lane should disappear until that pass succeeds.
 
-## I1 — Generic Workforce Integration
+## Full demo integration — required final run
 
-### Inputs
+```text
+Tenant request
+→ dynamic worker staffing
+→ Tenant interaction
+→ procurement worker
+→ 3 Contractors contacted
+→ replies parsed
+→ recommendation
+→ owner approval/rejection
+→ contractor confirmation
+→ Tenant update
+→ completion
+→ Tenant verification
+→ promotion
+```
 
-- A1 complete enough to create/delegate workers through the runtime;
-- B1 complete enough to render generic workforce/work/event state.
+### Required proof sequence
 
-### Required proof
+1. **Rejection path** — owner rejects; no contractor confirmed; state/events show blocked/re-source clearly.
+2. **Happy path** — owner approves; selected contractor confirmed; Tenant updated; completion + Tenant verification closes work; promotion path works.
+3. Genericity smoke — marketing-shaped request still uses the same pipeline/UI surfaces.
 
-- WhatsApp maintenance request -> generic work item -> capability analysis -> worker creation/reuse;
-- worker appears live in org chart;
-- work item appears live;
-- structured events render;
-- marketing request follows the same orchestration path and renders with the same UI.
+### After both paths pass
 
-### Exit criteria
+> **FEATURE FREEZE.**
 
-Both genericity requests pass end to end on merged code.
+No new architecture after that. Remaining work is polish, rehearsal, and submission only.
 
----
-
-## I2 — Live Human Execution Integration
-
-### Inputs
-
-- A2 external-human execution;
-- B2 participant/option surfaces.
-
-### Required proof
-
-- audience roles join;
-- Tenant starts the live maintenance work;
-- Ops worker is created/reused;
-- Procurement worker is created after a capability gap;
-- 3 real Contractors receive requests;
-- natural replies appear live as structured options;
-- recommendation is persisted and visibly understandable.
-
-### Exit criteria
-
-The system completes the flow up to the owner approval boundary using real WhatsApp participants.
-
----
-
-## I3 — Human Control, Verified Outcome & Promotion
-
-### Inputs
-
-- A3/A4 approval, verification, promotion behavior;
-- B3/B4 authority/status/promotion theatre.
-
-### Required proof
-
-Run both paths:
-
-1. **Reject** a recommendation and verify no external commitment occurs.
-2. Reset and run **Approve**.
-3. Winning Contractor receives confirmation.
-4. Contractor reports completion.
-5. Tenant verifies success.
-6. Work closes.
-7. Promotion becomes eligible.
-8. Owner approves promotion.
-9. Command centre shows permanent worker transition.
-
-### Exit criteria
-
-The full judged workflow works live, including a relevant denied action/failure-control path.
-
----
-
-## I4 — Demo Freeze / Submission Ready
+## Post-freeze polish / submission *(formerly I4)*
 
 ### Objective
 
-Stop feature development and turn the working system into a reliable hackathon submission.
+Turn the working system into a reliable hackathon submission.
 
 ### Required work
 
@@ -1039,8 +1071,6 @@ Stop feature development and turn the working system into a reliable hackathon s
 - verify reset flow;
 - verify no phone numbers/secrets are exposed publicly;
 - verify UI survives refresh;
-- verify rejection + approval paths;
-- verify marketing genericity smoke test;
 - remove obvious debug clutter;
 - update README with architecture, genericity explanation, setup, demo flow, and inherited-vs-built-during-event distinction;
 - prepare public repo/submission requirements;
@@ -1054,6 +1084,10 @@ Stop feature development and turn the working system into a reliable hackathon s
 - repository clearly shows generic kernel vs scenario adapter;
 - feature scope is frozen;
 - remaining work is only presentation/submission/rehearsal.
+
+### Compressed technical reference (I1–I3 detail)
+
+Earlier I1/I2/I3 checklists remain useful as a **detail checklist inside the single integration pass**, not as separate gates.
 
 ---
 
@@ -1139,7 +1173,7 @@ Do not implement before the core demo is stable:
 
 ---
 
-## 17. Stretch goals — only after I4 core readiness
+## 17. Stretch goals — only after FEATURE FREEZE
 
 Priority order:
 

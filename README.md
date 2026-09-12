@@ -53,6 +53,7 @@ A second request for an existing capability set reuses the persisted worker.
 | Function | Kind | Purpose |
 | --- | --- | --- |
 | `seed:bootstrapDemo` | mutation | Idempotently persist demo owner, company, Alex, capabilities |
+| `seed:resetTransientDemoState` | mutation | Clear transient workers/work/assignments/approvals/events; keep Alex + seed |
 | `companyProfiles:get` | query | Read the company profile |
 | `workers:list` | query | Read up to 100 workers |
 | `workers:createRealtimeProbe` | mutation | S2 realtime worker insert |

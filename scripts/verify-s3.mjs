@@ -11,6 +11,9 @@ if (!deploymentUrl) {
 
 const client = new ConvexHttpClient(deploymentUrl);
 const bootstrapDemo = makeFunctionReference("seed:bootstrapDemo");
+const resetTransientDemoState = makeFunctionReference(
+  "seed:resetTransientDemoState",
+);
 const intakeAndStaff = makeFunctionReference("workforce:intakeAndStaff");
 const listWorkers = makeFunctionReference("workers:list");
 const listWorkItems = makeFunctionReference("workItems:list");
@@ -19,6 +22,8 @@ const listEvents = makeFunctionReference("events:list");
 const listCapabilities = makeFunctionReference("capabilities:list");
 
 await client.mutation(bootstrapDemo, {});
+// Deterministic create→reuse proof requires a clean transient workforce.
+await client.mutation(resetTransientDemoState, {});
 
 const maintenanceText = "The toilet in Room 3 is leaking.";
 const marketingText = "Prepare our Instagram posts for next week.";

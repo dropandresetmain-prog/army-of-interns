@@ -101,3 +101,73 @@ export const bootstrapDemo = mutation({
     };
   },
 });
+
+/**
+ * Clear transient workforce/demo execution state while keeping seeded
+ * company, owner, Alex, and controlled capabilities. Used by verification
+ * and live demo reset — not a schema change.
+ */
+export const resetTransientDemoState = mutation({
+  args: {},
+  returns: v.object({
+    deletedWorkers: v.number(),
+    deletedWorkItems: v.number(),
+    deletedAssignments: v.number(),
+    deletedApprovals: v.number(),
+    deletedEvents: v.number(),
+  }),
+  handler: async (ctx) => {
+    let deletedWorkers = 0;
+    let deletedWorkItems = 0;
+    let deletedAssignments = 0;
+    let deletedApprovals = 0;
+    let deletedEvents = 0;
+
+    const workers = await ctx.db.query("workers").take(500);
+    for (const worker of workers) {
+      if (worker.name === DEMO_MANAGER_NAME) {
+        await ctx.db.patch(worker._id, {
+          status: "idle",
+          tasksCompleted: 0,
+          successfulTasks: 0,
+          promotionEligible: false,
+        });
+        continue;
+      }
+      await ctx.db.delete(worker._id);
+      deletedWorkers += 1;
+    }
+
+    const workItems = await ctx.db.query("workItems").take(500);
+    for (const workItem of workItems) {
+      await ctx.db.delete(workItem._id);
+      deletedWorkItems += 1;
+    }
+
+    const assignments = await ctx.db.query("assignments").take(500);
+    for (const assignment of assignments) {
+      await ctx.db.delete(assignment._id);
+      deletedAssignments += 1;
+    }
+
+    const approvals = await ctx.db.query("approvals").take(500);
+    for (const approval of approvals) {
+      await ctx.db.delete(approval._id);
+      deletedApprovals += 1;
+    }
+
+    const events = await ctx.db.query("events").take(500);
+    for (const event of events) {
+      await ctx.db.delete(event._id);
+      deletedEvents += 1;
+    }
+
+    return {
+      deletedWorkers,
+      deletedWorkItems,
+      deletedAssignments,
+      deletedApprovals,
+      deletedEvents,
+    };
+  },
+});
