@@ -157,6 +157,18 @@ describe("WorkerSpec and permissions", () => {
     const allowed = mapCapabilitiesToToolPermissions(["content_marketing"]);
     expect(allowed).toContain("permission_read_business_record");
     expect(allowed).not.toContain("permission_solicit_options");
+    expect(mapCapabilitiesToToolPermissions(["maintenance_triage"])).toContain(
+      "permission_request_staffing",
+    );
+    expect(mapCapabilitiesToToolPermissions(["maintenance_triage"])).not.toContain(
+      "permission_solicit_options",
+    );
+    expect(mapCapabilitiesToToolPermissions(["vendor_sourcing"])).toContain(
+      "permission_evaluate_options",
+    );
+    expect(mapCapabilitiesToToolPermissions(["vendor_sourcing"])).not.toContain(
+      "permission_verify_outcome",
+    );
 
     const enforced = enforcePermissionEnvelope({
       capabilityKeys: ["content_marketing"],
@@ -266,7 +278,7 @@ describe("scenario independence", () => {
   it("keeps core workforce modules free of scenario-specific concepts", () => {
     const root = join(process.cwd(), "src", "core", "workforce");
     const forbidden =
-      /\b(Tenant|Contractor|plumber|quote|Shu Zhen|Kai|shu.?zhen)\b/i;
+      /\b(Tenant|Contractor|plumber|quote|Shu Zhen|Kai|Daniel|shu.?zhen)\b/i;
     const files: string[] = [];
 
     function walk(dir: string) {

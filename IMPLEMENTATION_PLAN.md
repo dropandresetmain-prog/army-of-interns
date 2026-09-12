@@ -151,7 +151,7 @@ Initial AI workforce:
 Workers created during the demo:
 
 - an Operations Intern, presented as Shu Zhen;
-- a Procurement Intern, presented as Kai.
+- a Procurement Intern, presented as Daniel.
 
 Names/personality are persistent worker data and presentation identities. Core orchestration relies on worker IDs, capabilities, permissions, and assignments.
 
@@ -167,7 +167,7 @@ Names/personality are persistent worker data and presentation identities. Core o
 8. Shu Zhen diagnoses the issue and identifies a second capability need: contractor/vendor sourcing.
 9. Shu Zhen requests staffing instead of silently expanding her own role.
 10. Alex creates a Procurement Intern from another generic `WorkerSpec`.
-11. Kai uses generic option-solicitation tooling to contact 3 live Contractor participants.
+11. Daniel uses generic option-solicitation tooling to contact 3 live Contractor participants.
 12. Contractors reply naturally with price and availability.
 13. The system extracts structured response data and applies explicit scenario evaluation rules.
 14. Alex presents the recommended option to the Business Owner and requests approval.

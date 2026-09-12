@@ -24,8 +24,14 @@ export const DEMO_OPS_WORKER = {
 };
 
 export const DEMO_PROCUREMENT_WORKER = {
-  name: "Kai",
+  name: "Daniel",
   title: "Procurement Intern",
+};
+
+export const DEMO_MANAGER = {
+  name: "Alex",
+  title: "General Manager",
+  employmentType: "permanent" as const,
 };
 
 export const PROMOTION_SUCCESS_THRESHOLD = 3;

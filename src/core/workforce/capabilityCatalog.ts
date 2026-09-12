@@ -41,6 +41,8 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       "permission_update_work_item",
       "permission_send_message",
       "permission_log_event",
+      "permission_request_staffing",
+      "permission_verify_outcome",
     ],
     signals: [
       "leak",
@@ -59,10 +61,11 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
     implies: ["stakeholder_messaging"],
     roleTemplate: {
       title: "Operations Intern",
-      personality: "Practical, calm under pressure, detail-oriented.",
-      communicationStyle: "Clear and direct; confirm facts before acting.",
+      personality: "Efficient, proactive, slightly kancheong, and competent.",
+      communicationStyle: "Concise; light natural Singlish is fine. No theatrics.",
       standingInstructions: [
         "Stay within assigned capabilities and tool permissions.",
+        "Ask useful follow-up questions, then act.",
         "Request staffing when work falls outside the capability envelope.",
         "Escalate actions that require human authority.",
       ],
@@ -101,6 +104,8 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       "permission_solicit_options",
       "permission_send_message",
       "permission_collect_response",
+      "permission_evaluate_options",
+      "permission_report_recommendation",
       "permission_log_event",
     ],
     signals: [
@@ -112,11 +117,12 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
     ],
     roleTemplate: {
       title: "Procurement Intern",
-      personality: "Organized and comparative.",
-      communicationStyle: "Structured questions; record replies faithfully.",
+      personality: "Concise, numbers-driven, and commercially practical.",
+      communicationStyle: "Short structured questions; record replies faithfully.",
       standingInstructions: [
         "Solicit options without committing spend.",
-        "Request approval before confirming any paid engagement.",
+        "Ask one clarification if price or availability is missing.",
+        "Never approve spend or confirm a paid engagement.",
       ],
     },
   },
@@ -245,6 +251,26 @@ export const TOOL_PERMISSIONS: readonly ToolPermissionDefinition[] = [
       "research",
       "bookkeeping",
     ],
+  },
+  {
+    id: "permission_request_staffing",
+    description: "Request additional workforce staffing for a missing capability.",
+    grantedByCapabilityKeys: ["maintenance_triage"],
+  },
+  {
+    id: "permission_verify_outcome",
+    description: "Record outcome verification from the affected stakeholder.",
+    grantedByCapabilityKeys: ["maintenance_triage"],
+  },
+  {
+    id: "permission_evaluate_options",
+    description: "Invoke deterministic option evaluation.",
+    grantedByCapabilityKeys: ["vendor_sourcing"],
+  },
+  {
+    id: "permission_report_recommendation",
+    description: "Report a sourcing recommendation to the manager.",
+    grantedByCapabilityKeys: ["vendor_sourcing"],
   },
 ] as const;
 

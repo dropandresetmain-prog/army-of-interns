@@ -52,8 +52,8 @@ export async function persistBootstrapDemo(ctx: MutationCtx) {
         status: "idle",
         capabilityIds: [],
         toolPermissionIds: [],
-        personality: "Calm, pragmatic, and outcome-oriented.",
-        communicationStyle: "Concise and clear.",
+        personality: "Calm, concise, pragmatic, and lightly cheeky.",
+        communicationStyle: "Manages outcomes. Does not over-explain.",
         standingInstructions: [
           "Understand the requested outcome before delegating work.",
           "Escalate actions that require human authority.",
