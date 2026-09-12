@@ -11,6 +11,7 @@ import {
   type RuntimeSnapshot,
   type RuntimeWorker,
 } from "./types";
+import { DEMO_OPS_WORKER, DEMO_PROCUREMENT_WORKER } from "../scenarios/propertyMaintenance/identities";
 
 const emptySnapshot: RuntimeSnapshot = {
   phase: "idle",
@@ -119,6 +120,13 @@ const daniel: RuntimeWorker = {
 };
 
 describe("agent factory permission envelopes", () => {
+  it("keeps Shu Zhen as permanent tenant-facing operations staff and Daniel as procurement intern", () => {
+    expect(DEMO_OPS_WORKER.name).toBe("Shu Zhen");
+    expect(DEMO_OPS_WORKER.employmentTypeOnCreate).toBe("permanent");
+    expect(DEMO_PROCUREMENT_WORKER.name).toBe("Daniel");
+    expect(DEMO_PROCUREMENT_WORKER.title).toMatch(/procurement/i);
+  });
+
   it("exposes only permitted tools for a worker", () => {
     expect(toolNamesForPermissions(shuZhen.toolPermissionIds)).toEqual(
       expectedToolNamesForWorker(shuZhen),
@@ -206,7 +214,7 @@ describe("dispatcher routing", () => {
   it("routes by identity and phase, not semantic keywords", () => {
     expect(
       selectAgentKind({ phase: "idle", roleType: "tenant" }),
-    ).toBe("manager");
+    ).toBe("operations");
     expect(
       selectAgentKind({
         phase: "awaiting_tenant_diagnosis",

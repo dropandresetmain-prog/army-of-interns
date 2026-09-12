@@ -19,13 +19,7 @@ export function selectAgentKind(input: {
   }
 
   if (input.roleType === "tenant") {
-    if (
-      input.phase === "awaiting_tenant_diagnosis" ||
-      input.phase === "awaiting_tenant_verification"
-    ) {
-      return "operations";
-    }
-    return "manager";
+    return "operations";
   }
 
   if (input.roleType === "contractor") {

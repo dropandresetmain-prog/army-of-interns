@@ -57,6 +57,13 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       "plumbing",
       "clogged",
       "flood",
+      "fan",
+      "squeak",
+      "squeaking",
+      "rattle",
+      "rattling",
+      "noise",
+      "noisy",
     ],
     implies: ["stakeholder_messaging"],
     roleTemplate: {

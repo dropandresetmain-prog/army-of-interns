@@ -186,8 +186,23 @@ export async function persistTelegramRole(
       return { handled: false, outbounds: [] };
     }
 
-    const state = await getOrCreateDemoState(ctx);
-    await ctx.db.patch(state._id, { activeRole: role });
+    const matches = await ctx.db
+      .query("people")
+      .withIndex("by_telegram_chat_id", (q) => q.eq("telegramChatId", args.chatId))
+      .take(20);
+    const isCorrelationPlaceholder = (person: Doc<"people">) =>
+      person.roleType === "participant" &&
+      person.scenarioMetadata?.source === "telegram_inbound_correlation";
+    const releaseOtherPlaceholders = async (keepPersonId: Id<"people">) => {
+      for (const person of matches) {
+        if (person._id !== keepPersonId && isCorrelationPlaceholder(person)) {
+          await ctx.db.patch(person._id, {
+            active: false,
+            telegramChatId: undefined,
+          });
+        }
+      }
+    };
 
     if (role === "owner") {
       const existing =
@@ -212,6 +227,7 @@ export async function persistTelegramRole(
         telegramChatId: args.chatId,
         active: true,
       });
+      await releaseOtherPlaceholders(personId);
       return {
         handled: true,
         outbounds: [
@@ -230,8 +246,9 @@ export async function persistTelegramRole(
           .query("people")
           .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", DEMO_TENANT.demoCallsign))
           .first()) ?? null;
+      const reusableParticipant = matches.find(isCorrelationPlaceholder);
       const personId =
-        existing?._id ??
+        existing?._id ?? reusableParticipant?._id ??
         (await ctx.db.insert("people", {
           displayName: DEMO_TENANT.displayName,
           roleType: DEMO_TENANT.roleType,
@@ -242,9 +259,12 @@ export async function persistTelegramRole(
         }));
       await ctx.db.patch(personId, {
         displayName: DEMO_TENANT.displayName,
+        roleType: DEMO_TENANT.roleType,
+        demoCallsign: DEMO_TENANT.demoCallsign,
         telegramChatId: args.chatId,
         active: true,
       });
+      await releaseOtherPlaceholders(personId);
       return {
         handled: true,
         outbounds: [
@@ -257,10 +277,6 @@ export async function persistTelegramRole(
       };
     }
 
-    const matches = await ctx.db
-      .query("people")
-      .withIndex("by_telegram_chat_id", (q) => q.eq("telegramChatId", args.chatId))
-      .take(20);
     const alreadyContractor = matches.find((person) => person.roleType === "contractor");
     const existingContractors = await ctx.db
       .query("people")
@@ -303,8 +319,24 @@ export async function persistTelegramRole(
       };
     }
 
+    const reusableParticipant = matches.find(isCorrelationPlaceholder);
+    const existingOtherRole = matches.find(
+      (person) => person.roleType !== "contractor" && !isCorrelationPlaceholder(person),
+    );
+    if (existingOtherRole) {
+      return {
+        handled: true,
+        outbounds: [
+          {
+            personId: existingOtherRole._id,
+            chatId: args.chatId,
+            body: `This chat is already registered as ${existingOtherRole.displayName}. Use a different Telegram account for a contractor.`,
+          },
+        ],
+      };
+    }
+
     const next = resolved.identity;
-    const reusableParticipant = matches.find((person) => person.roleType !== "contractor");
     const personId =
       reusableParticipant?._id ??
       (await ctx.db.insert("people", {
@@ -321,7 +353,9 @@ export async function persistTelegramRole(
       demoCallsign: next.demoCallsign,
       telegramChatId: args.chatId,
       active: true,
+      scenarioMetadata: { source: "telegram_start" },
     });
+    await releaseOtherPlaceholders(personId);
 
     return {
       handled: true,
@@ -502,7 +536,7 @@ export const routeInbound = internalMutation({
     if (
       (state.phase === "idle" || state.phase === "completed") &&
       tenant &&
-      (person?.roleType === "tenant" || state.activeRole === "tenant") &&
+      person?.roleType === "tenant" &&
       looksLikeWorkRequest(message.body)
     ) {
       const staffed = await staffTenantRequest(ctx, tenant, message.body);
@@ -1005,10 +1039,9 @@ async function handleTenantVerification(
     if (worker) {
       const successfulTasks = worker.successfulTasks + 1;
       const tasksCompleted = worker.tasksCompleted + 1;
-      const promotionEligible = isPromotionRecommended(
-        successfulTasks,
-        PROMOTION_SUCCESS_THRESHOLD,
-      );
+      const promotionEligible =
+        worker.employmentType !== "permanent" &&
+        isPromotionRecommended(successfulTasks, PROMOTION_SUCCESS_THRESHOLD);
       await ctx.db.patch(worker._id, {
         successfulTasks,
         tasksCompleted,

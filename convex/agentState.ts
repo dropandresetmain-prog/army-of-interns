@@ -22,7 +22,7 @@ import {
   SEEDED_OPS_SUCCESSFUL_TASKS,
 } from "../src/scenarios/propertyMaintenance";
 import { persistIntakeAndStaff, persistStaffCapabilities } from "./workforce";
-import { resetTransientDemoRecords } from "./seed";
+import { persistBootstrapDemo, resetTransientDemoRecords } from "./seed";
 
 const metadataValue = v.union(
   v.string(),
@@ -212,6 +212,7 @@ export const resetProofState = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     await resetTransientDemoRecords(ctx);
+    await persistBootstrapDemo(ctx);
     const quotes = await ctx.db.query("contractorQuotes").take(200);
     for (const quote of quotes) {
       await ctx.db.delete(quote._id);
@@ -491,6 +492,7 @@ export const staffWork = internalMutation({
     const result = await persistIntakeAndStaff(ctx, {
       text: args.objective,
       requestedByPersonId: tenant._id,
+      capabilityKeys: keys,
       context: "Telegram tenant report",
       constraints: [`Budget ≤ ${DEMO_BUDGET.currency} ${DEMO_BUDGET.amount}`, "Needed today"],
       workerPresentation: presentationForKeys(["maintenance_triage"]),
@@ -1016,10 +1018,9 @@ export const verifyOutcome = internalMutation({
       const worker = await ctx.db.get(state.operationsWorkerId);
       if (worker) {
         const successfulTasks = worker.successfulTasks + 1;
-        promotionEligible = isPromotionRecommended(
-          successfulTasks,
-          PROMOTION_SUCCESS_THRESHOLD,
-        );
+        promotionEligible =
+          worker.employmentType !== "permanent" &&
+          isPromotionRecommended(successfulTasks, PROMOTION_SUCCESS_THRESHOLD);
         await ctx.db.patch(worker._id, {
           successfulTasks,
           tasksCompleted: worker.tasksCompleted + 1,
@@ -1102,7 +1103,11 @@ export const recommendPromotion = internalMutation({
       return { eligible: false };
     }
     const worker = await ctx.db.get(state.operationsWorkerId);
-    if (!worker || !isPromotionRecommended(worker.successfulTasks, PROMOTION_SUCCESS_THRESHOLD)) {
+    if (
+      !worker ||
+      worker.employmentType === "permanent" ||
+      !isPromotionRecommended(worker.successfulTasks, PROMOTION_SUCCESS_THRESHOLD)
+    ) {
       return { eligible: false };
     }
     const owner = await ctx.db

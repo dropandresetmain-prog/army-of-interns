@@ -7,8 +7,10 @@ import { Check, Clock3, Expand, Flag, Radio, ShieldCheck, UsersRound } from "luc
 import { OrgChart } from "./org-chart";
 import { type CommandCentreState, type QuoteView } from "@/lib/command-centre-types";
 
-const TENANT_JOIN = "https://t.me/army_of_intern_demo_bot?start=tenant";
-const CONTRACTOR_JOIN = "https://t.me/army_of_intern_demo_bot?start=contractor";
+const TELEGRAM_BOT_USERNAME =
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, "") || "army_of_intern_demo_bot";
+const TENANT_JOIN = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=tenant`;
+const CONTRACTOR_JOIN = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=contractor`;
 
 const time = (timestamp: number) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -21,7 +23,33 @@ const time = (timestamp: number) =>
 const countLabel = (joined: number, required: number) => `${Math.min(joined, required)}/${required}`;
 
 const qrSrc = (url: string) =>
-  `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(url)}`;
+  `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
+
+function JoinQr({ label, href }: { label: string; href: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    <a className="qr-join" href={href} target="_blank" rel="noreferrer">
+      {imageFailed ? (
+        <span className="qr-placeholder qr-placeholder--join" role="img" aria-label={`${label} QR unavailable`}>
+          QR unavailable
+          <small>Open Telegram link</small>
+        </span>
+      ) : (
+        <img
+          alt={`${label} Telegram join QR`}
+          src={qrSrc(href)}
+          width={220}
+          height={220}
+          loading="eager"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      )}
+      <span>{label}</span>
+    </a>
+  );
+}
 
 function money(amount?: number) {
   return typeof amount === "number" ? `S$${amount}` : "—";
@@ -167,18 +195,13 @@ export function CommandCentre({
             <UsersRound size={18} />
           </div>
           <p className="lobby-instruction">
-            Join via Telegram using the venue QR. Owner Tim is registered separately. This is a
-            hackathon simulation; no service or payment is requested.
+            Scan a QR, open Telegram, then tap <strong>Start</strong> to register. Owner Tim is
+            registered separately. Up to three contractors can join; the demo still runs with one.
+            This is a hackathon simulation; no service or payment is requested.
           </p>
           <div className="qr-pair">
-            <a className="qr-join" href={TENANT_JOIN} target="_blank" rel="noreferrer">
-              <img alt="Tenant Telegram join QR" src={qrSrc(TENANT_JOIN)} width={140} height={140} />
-              <span>Tenant</span>
-            </a>
-            <a className="qr-join" href={CONTRACTOR_JOIN} target="_blank" rel="noreferrer">
-              <img alt="Contractor Telegram join QR" src={qrSrc(CONTRACTOR_JOIN)} width={140} height={140} />
-              <span>Contractors A/B/C</span>
-            </a>
+            <JoinQr label="Tenant" href={TENANT_JOIN} />
+            <JoinQr label="Contractors (up to 3)" href={CONTRACTOR_JOIN} />
           </div>
           <div className="role-row">
             <span>Business Owner</span>

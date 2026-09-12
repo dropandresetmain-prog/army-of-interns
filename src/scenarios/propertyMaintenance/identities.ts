@@ -17,9 +17,9 @@ export const CONTRACTOR_LABELS = ["Contractor A", "Contractor B", "Contractor C"
 
 export const DEMO_OPS_WORKER = {
   name: "Shu Zhen",
-  title: "Operations Intern",
+  title: "Property Operations Executive",
   promotedTitle: "Property Operations Executive",
-  employmentTypeOnCreate: "intern" as const,
+  employmentTypeOnCreate: "permanent" as const,
   employmentTypeOnPromote: "permanent" as const,
 };
 

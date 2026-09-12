@@ -53,6 +53,26 @@ describe("demo role registration", () => {
       identity: { displayName: "Contractor B" },
     });
   });
+
+  it("does not let a generic Telegram correlation placeholder consume a contractor slot", () => {
+    const result = resolveContractorRegistration({
+      chatId: "new-contractor-chat",
+      existingContractors: [
+        {
+          displayName: "Telegram participant",
+          telegramChatId: "new-contractor-chat",
+          // The webhook may create this placeholder before /start is routed.
+          roleType: "participant",
+          source: "telegram_inbound_correlation",
+        },
+      ] as Parameters<typeof resolveContractorRegistration>[0]["existingContractors"],
+    });
+
+    expect(result).toEqual({
+      action: "assign",
+      identity: { displayName: "Contractor A", demoCallsign: "CONTRACTOR_A" },
+    });
+  });
 });
 
 describe("contractor response extraction and ranking", () => {

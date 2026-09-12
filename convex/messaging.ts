@@ -11,6 +11,7 @@ import {
 } from "./model/validators";
 import { participantDisplayHint } from "../src/integrations/twilio/phone";
 import { participantDisplayHint as telegramDisplayHint } from "../src/integrations/telegram/identity";
+import { parseStartRole } from "../src/scenarios/propertyMaintenance";
 
 const ingestResultValidator = v.object({
   outcome: v.union(v.literal("accepted"), v.literal("duplicate")),
@@ -307,35 +308,23 @@ export const ingestTelegram = internalMutation({
       };
     }
 
-    const demo = await ctx.db
-      .query("demoState")
-      .withIndex("by_key", (q) => q.eq("key", "live"))
-      .first();
-
     const matches = await ctx.db
       .query("people")
       .withIndex("by_telegram_chat_id", (q) => q.eq("telegramChatId", args.chatId))
       .take(20);
 
+    const startRole = parseStartRole(args.body);
     let createdPerson = false;
     let person =
-      (demo?.activeRole
-        ? matches.find((candidate) => {
-            if (demo.activeRole === "owner") {
-              return candidate.roleType === "business_owner";
-            }
-            if (demo.activeRole === "tenant") {
-              return candidate.roleType === "tenant";
-            }
-            if (demo.activeRole === "contractor") {
-              return candidate.roleType === "contractor";
-            }
-            return false;
-          })
-        : undefined) ??
-      matches[0];
+      startRole === null
+        ? (matches.find(
+            (candidate) => candidate.active && candidate.roleType !== "participant",
+          ) ?? matches.find((candidate) => candidate.active) ?? matches[0])
+        : undefined;
 
-    if (!person) {
+    // Role-bearing /start messages are registered by demoRuntime before any
+    // generic participant may claim the Telegram chat.
+    if (!person && startRole === null) {
       const personId = await ctx.db.insert("people", {
         displayName:
           args.displayNameHint?.trim() || telegramDisplayHint(undefined, args.chatId),

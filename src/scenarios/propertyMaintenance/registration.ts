@@ -40,18 +40,26 @@ export function nextContractorIdentity(existingContractorCount: number): {
 
 export function resolveContractorRegistration(input: {
   chatId: string;
-  existingContractors: Array<{ telegramChatId?: string; displayName: string }>;
+  existingContractors: Array<{
+    telegramChatId?: string;
+    displayName: string;
+    roleType?: string;
+    source?: string;
+  }>;
 }):
   | { action: "reuse"; displayName: string }
   | { action: "assign"; identity: NonNullable<ReturnType<typeof nextContractorIdentity>> }
   | { action: "full" } {
-  const already = input.existingContractors.find(
+  const contractors = input.existingContractors.filter(
+    (person) => person.roleType === undefined || person.roleType === "contractor",
+  );
+  const already = contractors.find(
     (person) => person.telegramChatId === input.chatId,
   );
   if (already) {
     return { action: "reuse", displayName: already.displayName };
   }
-  const identity = nextContractorIdentity(input.existingContractors.length);
+  const identity = nextContractorIdentity(contractors.length);
   if (!identity) {
     return { action: "full" };
   }

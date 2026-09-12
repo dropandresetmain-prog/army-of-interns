@@ -94,6 +94,7 @@ async function emitEvent(
 type IntakeArgs = {
   text: string;
   requestedByPersonId?: Id<"people">;
+  capabilityKeys?: string[];
   context?: string;
   constraints?: string[];
   successCriteria?: string[];
@@ -157,6 +158,7 @@ export async function persistIntakeAndStaff(ctx: MutationCtx, args: IntakeArgs) 
     const analysis = analyzeRequiredCapabilities({
       objective: draft.objective,
       context: draft.context,
+      proposedCapabilityKeys: args.capabilityKeys,
     });
 
     if (analysis.unrecognized) {

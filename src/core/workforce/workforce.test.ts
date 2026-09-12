@@ -45,6 +45,15 @@ describe("capability analysis", () => {
     ]);
     expect(maintenance.unrecognized).toBe(false);
 
+    const fanNoise = analyzeRequiredCapabilities({
+      objective: "My room unit has a squeaking fan sound.",
+    });
+    expect(fanNoise.requiredCapabilityKeys).toEqual([
+      "maintenance_triage",
+      "stakeholder_messaging",
+    ]);
+    expect(fanNoise.unrecognized).toBe(false);
+
     const marketing = analyzeRequiredCapabilities({
       objective: "Prepare our Instagram posts for next week.",
     });

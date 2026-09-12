@@ -1,12 +1,27 @@
 import { v } from "convex/values";
 
 import { CONTROLLED_CAPABILITIES } from "../src/core/workforce/capabilityCatalog";
+import { DEMO_MANAGER, DEMO_OPS_WORKER } from "../src/scenarios/propertyMaintenance";
+import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 
 const DEMO_COMPANY_NAME = "Army of Interns Demo";
 const DEMO_OWNER_CALLSIGN = "OWNER";
-const DEMO_MANAGER_NAME = "Alex";
+const DEMO_MANAGER_NAME = DEMO_MANAGER.name;
+const OPERATIONS_CAPABILITY_KEYS = ["maintenance_triage", "stakeholder_messaging"] as const;
+
+function operationsToolPermissionIds() {
+  return [
+    ...new Set(
+      CONTROLLED_CAPABILITIES.filter((capability) =>
+        OPERATIONS_CAPABILITY_KEYS.includes(
+          capability.key as (typeof OPERATIONS_CAPABILITY_KEYS)[number],
+        ),
+      ).flatMap((capability) => capability.defaultToolPermissionIds),
+    ),
+  ];
+}
 
 export async function persistBootstrapDemo(ctx: MutationCtx) {
     const existingOwner = await ctx.db
@@ -64,20 +79,58 @@ export async function persistBootstrapDemo(ctx: MutationCtx) {
       }));
 
     let capabilityCount = 0;
+    const capabilityIds = new Map<string, Id<"capabilities">>();
     for (const definition of CONTROLLED_CAPABILITIES) {
       const existing = await ctx.db
         .query("capabilities")
         .withIndex("by_key", (q) => q.eq("key", definition.key))
         .first();
-      if (!existing) {
-        await ctx.db.insert("capabilities", {
+      const capabilityId =
+        existing?._id ??
+        (await ctx.db.insert("capabilities", {
           key: definition.key,
           name: definition.name,
           description: definition.description,
           defaultToolPermissionIds: [...definition.defaultToolPermissionIds],
-        });
-      }
+        }));
+      capabilityIds.set(definition.key, capabilityId);
       capabilityCount += 1;
+    }
+
+    const maintenanceDefinition = CONTROLLED_CAPABILITIES.find(
+      (capability) => capability.key === "maintenance_triage",
+    );
+    if (!maintenanceDefinition) {
+      throw new Error("Maintenance capability is not configured.");
+    }
+    const operationsCapabilityIds = OPERATIONS_CAPABILITY_KEYS.map((key) => capabilityIds.get(key));
+    if (operationsCapabilityIds.some((id) => !id)) {
+      throw new Error("Shu Zhen's permanent capabilities could not be seeded.");
+    }
+    const existingOperations = await ctx.db
+      .query("workers")
+      .withIndex("by_name", (q) => q.eq("name", DEMO_OPS_WORKER.name))
+      .first();
+    const operationsWorker = {
+      name: DEMO_OPS_WORKER.name,
+      title: DEMO_OPS_WORKER.title,
+      employmentType: DEMO_OPS_WORKER.employmentTypeOnCreate,
+      rank: "employee" as const,
+      managerWorkerId,
+      status: "idle" as const,
+      capabilityIds: operationsCapabilityIds as Id<"capabilities">[],
+      toolPermissionIds: operationsToolPermissionIds(),
+      personality: maintenanceDefinition.roleTemplate.personality,
+      communicationStyle: maintenanceDefinition.roleTemplate.communicationStyle,
+      standingInstructions: [...maintenanceDefinition.roleTemplate.standingInstructions],
+      tasksCompleted: existingOperations?.tasksCompleted ?? 0,
+      successfulTasks: existingOperations?.successfulTasks ?? 0,
+      promotionEligible: false,
+    };
+    if (existingOperations) {
+      await ctx.db.patch(existingOperations._id, operationsWorker);
+    } else {
+      await ctx.db.insert("workers", operationsWorker);
     }
 
     return {
@@ -107,7 +160,8 @@ export const bootstrapDemo = mutation({
 
 /**
  * Clear transient workforce/demo execution state while keeping seeded
- * company, owner, Alex, and controlled capabilities. Used by verification
+ * company, owner, permanent staff Alex and Shu Zhen, and controlled
+ * capabilities. Used by verification
  * and live demo reset — not a schema change.
  */
 export async function resetTransientDemoRecords(ctx: MutationCtx) {
@@ -118,10 +172,36 @@ export async function resetTransientDemoRecords(ctx: MutationCtx) {
     let deletedEvents = 0;
 
     const workers = await ctx.db.query("workers").take(500);
+    const managerWorkerId = workers.find((worker) => worker.name === DEMO_MANAGER_NAME)?._id;
+    const operationsCapabilityIds: Id<"capabilities">[] = [];
+    for (const key of OPERATIONS_CAPABILITY_KEYS) {
+      const capability = await ctx.db
+        .query("capabilities")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .first();
+      if (capability) {
+        operationsCapabilityIds.push(capability._id);
+      }
+    }
     for (const worker of workers) {
       if (worker.name === DEMO_MANAGER_NAME) {
         await ctx.db.patch(worker._id, {
           status: "idle",
+          tasksCompleted: 0,
+          successfulTasks: 0,
+          promotionEligible: false,
+        });
+        continue;
+      }
+      if (worker.name === DEMO_OPS_WORKER.name) {
+        await ctx.db.patch(worker._id, {
+          title: DEMO_OPS_WORKER.title,
+          employmentType: DEMO_OPS_WORKER.employmentTypeOnCreate,
+          rank: "employee",
+          managerWorkerId,
+          status: "idle",
+          capabilityIds: operationsCapabilityIds,
+          toolPermissionIds: operationsToolPermissionIds(),
           tasksCompleted: 0,
           successfulTasks: 0,
           promotionEligible: false,
@@ -174,5 +254,9 @@ export const resetTransientDemoState = mutation({
     deletedApprovals: v.number(),
     deletedEvents: v.number(),
   }),
-  handler: resetTransientDemoRecords,
+  handler: async (ctx) => {
+    const result = await resetTransientDemoRecords(ctx);
+    await persistBootstrapDemo(ctx);
+    return result;
+  },
 });

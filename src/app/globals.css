@@ -49,6 +49,18 @@
 .status-dot--thinking,.status-dot--using_tool,.status-dot--delegating { animation:aoi-pulse 1.45s infinite; }
 
 /* QR destination: deliberately mobile-first, with all workflow values supplied by persisted state later. */
+
+/* Keep join codes large and scannable on a projection while allowing a direct-link fallback. */
+.qr-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.qr-join { min-width:0; }
+.qr-join img,.qr-placeholder--join { width:100%; max-width:220px; aspect-ratio:1; }
+.qr-placeholder--join { display:grid; place-items:center; height:auto; border:1px dashed var(--aoi-bdr); background:repeating-linear-gradient(45deg,var(--aoi-surf),var(--aoi-surf) 8px,var(--aoi-bg) 8px,var(--aoi-bg) 16px); color:var(--muted); text-align:center; }
+.qr-placeholder--join small { display:block; color:var(--muted); font:10px/1.3 var(--font-sans); letter-spacing:0; text-transform:none; }
+
+@media (max-width:700px) {
+  .qr-pair { grid-template-columns:1fr; }
+  .qr-join img,.qr-placeholder--join { max-width:260px; }
+}
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 
 .landlord-page { min-height:100vh; max-width:740px; margin:auto; padding:22px 18px 104px; color:var(--aoi-text); background:var(--aoi-bg); font-family:var(--font-sans); }
