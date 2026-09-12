@@ -5,21 +5,21 @@ export const demoState: CommandCentreState = {
   workers: [
     { id: "alex", name: "Alex", title: "General Manager", employmentType: "permanent", rank: "manager", status: "delegating", capabilities: ["triage", "workforce planning", "approval coordination"] },
     { id: "shu-zhen", name: "Shu Zhen", title: "Operations Intern", employmentType: "intern", rank: "intern", managerAgentId: "alex", status: "waiting_human", capabilities: ["maintenance triage", "tenant coordination"] },
-    { id: "kai", name: "Kai", title: "Procurement Intern", employmentType: "intern", rank: "intern", managerAgentId: "alex", status: "using_tool", capabilities: ["contractor sourcing", "quote intake"] }
+    { id: "daniel", name: "Daniel", title: "Procurement Intern", employmentType: "intern", rank: "intern", managerAgentId: "alex", status: "using_tool", capabilities: ["contractor sourcing", "quote intake"] }
   ],
-  workItem: { id: "case-041", title: "Leaking toilet — Unit 18-07", tenantCallsign: "TENANT-01", status: "Sourcing quotes", budget: 450, deadline: "Today, 17:00", assignedWorkerIds: ["alex", "shu-zhen", "kai"], waitingOn: "3 contractor quotes", completionVerified: false },
+  workItem: { id: "case-041", title: "Leaking toilet — Unit 18-07", tenantCallsign: "Tenant", status: "Sourcing quotes", budget: 150, deadline: "Today", assignedWorkerIds: ["alex", "shu-zhen", "daniel"], waitingOn: "3 contractor quotes", completionVerified: false },
   events: [
-    { id: "e1", timestamp: Date.now() - 78000, workerId: "alex", type: "work_received", summary: "New maintenance request received.", detail: "Case CASE-041 opened for TENANT-01." },
+    { id: "e1", timestamp: Date.now() - 78000, workerId: "alex", type: "work_received", summary: "New maintenance request received.", detail: "Case opened for Tenant." },
     { id: "e2", timestamp: Date.now() - 63000, workerId: "alex", type: "capability_gap", summary: "Property-operations capability required." },
     { id: "e3", timestamp: Date.now() - 61000, workerId: "alex", type: "agent_created", summary: "Created Operations Intern: Shu Zhen." },
     { id: "e4", timestamp: Date.now() - 40000, workerId: "shu-zhen", type: "classified", summary: "Tenant response received. Issue classified: plumbing." },
-    { id: "e5", timestamp: Date.now() - 29000, workerId: "alex", type: "agent_created", summary: "Created Procurement Intern: Kai." },
-    { id: "e6", timestamp: Date.now() - 5000, workerId: "kai", type: "tool_invoked", summary: "Quote requests sent to available contractors." }
+    { id: "e5", timestamp: Date.now() - 29000, workerId: "alex", type: "agent_created", summary: "Created Procurement Intern: Daniel." },
+    { id: "e6", timestamp: Date.now() - 5000, workerId: "daniel", type: "tool_invoked", summary: "Quote requests sent to available contractors." }
   ],
   quotes: [
-    { id: "q1", contractorCallsign: "CONTRACTOR-01", price: 380, availability: "Today, 15:30", withinBudget: true, meetsDeadline: true, selected: true, recommendation: "Lowest viable quote, available before deadline" },
-    { id: "q2", contractorCallsign: "CONTRACTOR-02", price: 420, availability: "Today, 16:00", withinBudget: true, meetsDeadline: true },
-    { id: "q3", contractorCallsign: "CONTRACTOR-03", price: 280, availability: "Tomorrow, 09:00", withinBudget: true, meetsDeadline: false }
+    { id: "q1", contractorCallsign: "Contractor A", price: 120, availability: "Today, 15:30", withinBudget: true, meetsDeadline: true, viable: true, selected: true, recommendation: "Lowest viable quote, available before deadline" },
+    { id: "q2", contractorCallsign: "Contractor B", price: 140, availability: "Today, 16:00", withinBudget: true, meetsDeadline: true, viable: true },
+    { id: "q3", contractorCallsign: "Contractor C", price: 90, availability: "Tomorrow, 09:00", withinBudget: true, meetsDeadline: false, viable: false }
   ],
   approval: { status: "pending", action: "Confirm contractor booking", requestedFrom: "Business Owner" },
   participants: { ownerReady: true, tenant: { joined: 1, required: 1 }, contractors: { joined: 3, required: 3 } }

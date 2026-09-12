@@ -3,6 +3,9 @@
 Shared milestones build a generic adaptive AI workforce demo. **S3** adds the
 generic workforce kernel on top of the S1 contracts and S2 messaging spine.
 
+The live hackathon transport is Telegram (Twilio/WhatsApp remains in the repo)
+because the current Twilio Sandbox setup is not usable.
+
 ## Local setup
 
 Requirements: Node.js 20.9 or newer and npm.
@@ -69,6 +72,7 @@ A second request for an existing capability set reuses the persisted worker.
 | `messagingOutbound:sendWhatsApp` | action | Outbound WhatsApp via Twilio adapter |
 | `messagingOutbound:sendTestWhatsApp` | action | Fixed S2 test send |
 | `POST /twilio/whatsapp` | HTTP action | Twilio inbound webhook |
+| `POST /telegram/webhook` | HTTP action | Telegram inbound webhook (live hackathon transport) |
 
 These functions are intentionally unauthenticated for local development. Do not
 expose a deployment with real participant data publicly without auth.

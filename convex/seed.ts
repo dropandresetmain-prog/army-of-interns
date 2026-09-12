@@ -1,24 +1,14 @@
 import { v } from "convex/values";
 
 import { CONTROLLED_CAPABILITIES } from "../src/core/workforce/capabilityCatalog";
+import type { MutationCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 
 const DEMO_COMPANY_NAME = "Army of Interns Demo";
 const DEMO_OWNER_CALLSIGN = "OWNER";
 const DEMO_MANAGER_NAME = "Alex";
 
-export const bootstrapDemo = mutation({
-  args: {},
-  returns: v.object({
-    companyId: v.id("companyProfiles"),
-    ownerPersonId: v.id("people"),
-    managerWorkerId: v.id("workers"),
-    createdCompany: v.boolean(),
-    createdOwner: v.boolean(),
-    createdManager: v.boolean(),
-    capabilityCount: v.number(),
-  }),
-  handler: async (ctx) => {
+export async function persistBootstrapDemo(ctx: MutationCtx) {
     const existingOwner = await ctx.db
       .query("people")
       .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", DEMO_OWNER_CALLSIGN))
@@ -26,7 +16,7 @@ export const bootstrapDemo = mutation({
     const ownerPersonId =
       existingOwner?._id ??
       (await ctx.db.insert("people", {
-        displayName: "Demo Business Owner",
+        displayName: "Tim",
         roleType: "business_owner",
         demoCallsign: DEMO_OWNER_CALLSIGN,
         active: true,
@@ -62,8 +52,8 @@ export const bootstrapDemo = mutation({
         status: "idle",
         capabilityIds: [],
         toolPermissionIds: [],
-        personality: "Calm, pragmatic, and outcome-oriented.",
-        communicationStyle: "Concise and clear.",
+        personality: "Calm, concise, pragmatic, and lightly cheeky.",
+        communicationStyle: "Manages outcomes. Does not over-explain.",
         standingInstructions: [
           "Understand the requested outcome before delegating work.",
           "Escalate actions that require human authority.",
@@ -99,7 +89,20 @@ export const bootstrapDemo = mutation({
       createdManager: existingManager === null,
       capabilityCount,
     };
-  },
+}
+
+export const bootstrapDemo = mutation({
+  args: {},
+  returns: v.object({
+    companyId: v.id("companyProfiles"),
+    ownerPersonId: v.id("people"),
+    managerWorkerId: v.id("workers"),
+    createdCompany: v.boolean(),
+    createdOwner: v.boolean(),
+    createdManager: v.boolean(),
+    capabilityCount: v.number(),
+  }),
+  handler: persistBootstrapDemo,
 });
 
 /**
@@ -107,16 +110,7 @@ export const bootstrapDemo = mutation({
  * company, owner, Alex, and controlled capabilities. Used by verification
  * and live demo reset — not a schema change.
  */
-export const resetTransientDemoState = mutation({
-  args: {},
-  returns: v.object({
-    deletedWorkers: v.number(),
-    deletedWorkItems: v.number(),
-    deletedAssignments: v.number(),
-    deletedApprovals: v.number(),
-    deletedEvents: v.number(),
-  }),
-  handler: async (ctx) => {
+export async function resetTransientDemoRecords(ctx: MutationCtx) {
     let deletedWorkers = 0;
     let deletedWorkItems = 0;
     let deletedAssignments = 0;
@@ -169,5 +163,16 @@ export const resetTransientDemoState = mutation({
       deletedApprovals,
       deletedEvents,
     };
-  },
+}
+
+export const resetTransientDemoState = mutation({
+  args: {},
+  returns: v.object({
+    deletedWorkers: v.number(),
+    deletedWorkItems: v.number(),
+    deletedAssignments: v.number(),
+    deletedApprovals: v.number(),
+    deletedEvents: v.number(),
+  }),
+  handler: resetTransientDemoRecords,
 });

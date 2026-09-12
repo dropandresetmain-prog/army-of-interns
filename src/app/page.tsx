@@ -1,3 +1,5 @@
-import { DemoTheatre } from "@/components/demo-theatre";
+import { LiveCommandCentre } from "@/components/live-command-centre";
 
-export default function Home() { return <DemoTheatre />; }
+export default function Home() {
+  return <LiveCommandCentre />;
+}

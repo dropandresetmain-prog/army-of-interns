@@ -54,6 +54,7 @@ export interface QuoteView {
   availability: string;
   withinBudget?: boolean;
   meetsDeadline?: boolean;
+  viable?: boolean;
   selected?: boolean;
   recommendation?: string;
 }
