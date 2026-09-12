@@ -230,10 +230,7 @@ larger displays.
 
 ### Avatar scene
 
-The Alex hero is a lightweight Three.js scene: stylised manager form, a command ring and
-orbiting worker beacons. It respects reduced-motion preferences. A CSS avatar fallback
-ensures the design remains complete in WebGL-restricted browsers and projector
-environments.
+The Alex hero is a CSS/DOM-rendered scene (no WebGL dependency): a stylised manager form, command ring and orbiting contractor/tenant beacons, driven by Alex's supplied Strobi avatar definition. It respects reduced-motion preferences and needs no GPU, so it renders identically in WebGL-restricted browsers and projector environments without a separate fallback path.
 
 Under Roster the ring is `aoi-accent`, not brass.
 
