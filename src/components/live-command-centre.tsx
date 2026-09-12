@@ -23,9 +23,19 @@ export function LiveCommandCentre() {
   }, [resetNote]);
 
   const state = snapshot ? toCommandCentreState(snapshot) : emptyCommandCentreState;
+  const boardKey = snapshot
+    ? [
+        snapshot.participants.ownerReady ? "owner" : "no-owner",
+        snapshot.participants.tenant.joined,
+        snapshot.participants.contractors.joined,
+        snapshot.workers.map((worker) => worker.id).join("-") || "alex-only",
+        snapshot.workItem?.id ?? "idle",
+      ].join(":")
+    : "loading";
 
   return (
     <CommandCentre
+      key={boardKey}
       initialState={state}
       headerActions={
         <>
@@ -35,8 +45,14 @@ export function LiveCommandCentre() {
             disabled={isPending}
             onClick={() =>
               startTransition(async () => {
-                await resetDemo({});
-                setResetNote("Demo reset");
+                try {
+                  await resetDemo({});
+                  setResetNote("Demo reset");
+                } catch (error) {
+                  setResetNote(
+                    error instanceof Error ? error.message : "Reset failed",
+                  );
+                }
               })
             }
           >
