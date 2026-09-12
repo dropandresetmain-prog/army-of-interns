@@ -23,7 +23,7 @@ const voiceOptions = ["Singlish", "Normal English", "Mandarin", "Tamil", "Malay"
 
 const notifications = [
   "Alex matched a contractor for the leaking toilet.",
-  "Invoice RM 380 is pending your approval.",
+  "Invoice SGD 380 is pending your approval.",
 ];
 
 function Journey({ activeStage = "Matched" }: { activeStage?: ContractorStage }) {
@@ -169,7 +169,7 @@ function OverviewGrid() {
         </span>
         <div>
           <small>Invoices</small>
-          <strong>RM 380</strong>
+          <strong>SGD 380</strong>
           <p>Due after work</p>
         </div>
       </article>
@@ -202,7 +202,7 @@ function FinanceSplit() {
         <ReceiptText size={18} aria-hidden="true" />
         <div>
           <span>Latest invoice</span>
-          <b>Plumbing call-out · RM 380</b>
+          <b>Plumbing call-out · SGD 380</b>
         </div>
         <small>Pending</small>
       </article>
