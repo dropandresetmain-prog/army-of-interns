@@ -4,6 +4,7 @@ import { Agent, Runner, tool } from "@openai/agents";
 import { v } from "convex/values";
 import { z } from "zod";
 
+import { assertLiveAiEnabled } from "../src/agents/liveAi";
 import { createOpenRouterProvider } from "../src/agents/openRouter";
 import { action } from "./_generated/server";
 
@@ -46,6 +47,7 @@ export const proveToolCall = action({
     toolNames: v.array(v.string()),
   }),
   handler: async () => {
+    assertLiveAiEnabled(process.env);
     const { provider, model } = createOpenRouterProvider(process.env);
     const agent = new Agent({
       name: "Spike",

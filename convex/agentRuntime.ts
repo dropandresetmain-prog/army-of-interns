@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import type { AgentBridge } from "../src/agents/bridge";
 import { activityForFallback, activityForTool } from "../src/agents/events";
 import { createManagerAgent, createWorkerAgent } from "../src/agents/factory";
+import { assertLiveAiEnabled } from "../src/agents/liveAi";
 import { createOpenRouterProvider } from "../src/agents/openRouter";
 import { kindFromWorker } from "../src/agents/messageTargeting";
 import { inboundAgentPrompt, managerFollowUpPrompt } from "../src/agents/prompts";
@@ -96,6 +97,7 @@ export const handleInbound = internalAction({
     }
 
     try {
+      assertLiveAiEnabled();
       const result = await runInboundAgents(ctx, {
         chatId: args.chatId,
         body: inbound.body,
@@ -620,6 +622,7 @@ export const proveDelegation = action({
     eventSummaries: string[];
     eventTypes: string[];
   }> => {
+    assertLiveAiEnabled();
     await ctx.runMutation(internal.seed.bootstrapDemoInternal, {});
     const tenant: { personId: Id<"people"> } = await ctx.runMutation(
       internal.agentState.ensureDemoTenant,
@@ -678,6 +681,7 @@ export const proveThreeAgent = action({
     eventTypes: string[];
     outboundCount: number;
   }> => {
+    assertLiveAiEnabled();
     await ctx.runMutation(internal.seed.bootstrapDemoInternal, {});
     const tenant = await ctx.runMutation(internal.agentState.ensureDemoTenant, {});
     await ctx.runMutation(internal.agentState.resetProofState, {});

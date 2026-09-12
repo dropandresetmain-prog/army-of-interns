@@ -51,6 +51,24 @@ Smoke cases use the same `workforce:intakeAndStaff` entrypoint:
 
 A second request for an existing capability set reuses the persisted worker.
 
+## Live AI flag
+
+OpenRouter spend is gated by Convex env `LIVE_AI_ENABLED` (fail closed).
+
+```powershell
+# Public / Vercel-facing deployment — keep AI off
+npx convex env unset LIVE_AI_ENABLED
+# or:
+npx convex env set LIVE_AI_ENABLED false
+
+# Local / intentional live demo
+npx convex env set LIVE_AI_ENABLED true
+npx convex env set OPENROUTER_API_KEY <key>
+```
+
+When the flag is off, Telegram inbound still runs via the deterministic
+`demoRuntime` fallback. Prove/spike actions refuse instead of calling the model.
+
 ## Shared public Convex boundary
 
 Destructive demo helpers require `adminSecret` matching Convex env
