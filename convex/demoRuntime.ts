@@ -35,7 +35,6 @@ import {
   canVerifyOutcome,
 } from "../src/agents/authority";
 import { persistIntakeAndStaff, persistStaffCapabilities } from "./workforce";
-import { assertDemoAdminSecret } from "./lib/demoAdmin";
 import { persistBootstrapDemo, resetTransientDemoRecords } from "./seed";
 
 const personPublicValidator = v.object({
@@ -1188,15 +1187,13 @@ async function handlePromote(
 }
 
 export const resetDemo = mutation({
-  args: {
-    adminSecret: v.string(),
-  },
+  args: {},
   returns: v.object({
     ok: v.boolean(),
   }),
-  handler: async (ctx, args) => {
-    assertDemoAdminSecret(args.adminSecret);
-
+  handler: async (ctx) => {
+    // Full-flow restart: wipe conversation/runtime state, drop joined humans,
+    // and leave only the seeded owner row unbound so Tim must /start again.
     for (;;) {
       const quotes = await ctx.db.query("contractorQuotes").take(100);
       if (quotes.length === 0) {
@@ -1222,8 +1219,6 @@ export const resetDemo = mutation({
 
     await resetTransientDemoRecords(ctx);
 
-    // Owner Tim stays registered. Tenant and contractor joins must drop so
-    // the command-centre crew counts return to 0/1 and 0/3.
     for (;;) {
       const people = await ctx.db.query("people").take(100);
       let deleted = 0;
@@ -1232,6 +1227,13 @@ export const resetDemo = mutation({
           person.roleType === DEMO_OWNER.roleType ||
           person.demoCallsign === DEMO_OWNER.demoCallsign;
         if (isOwner) {
+          // Keep seeded Tim, but force a fresh /start so owner joins the flow again.
+          if (person.telegramChatId !== undefined) {
+            await ctx.db.patch(person._id, {
+              telegramChatId: undefined,
+              active: true,
+            });
+          }
           continue;
         }
         await ctx.db.delete(person._id);
