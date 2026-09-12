@@ -6,7 +6,8 @@ export default defineSchema({
   companyProfiles: defineTable(tableFields.companyProfiles).index("by_name", ["name"]),
   people: defineTable(tableFields.people)
     .index("by_display_name", ["displayName"])
-    .index("by_demo_callsign", ["demoCallsign"]),
+    .index("by_demo_callsign", ["demoCallsign"])
+    .index("by_whatsapp_number", ["whatsappNumber"]),
   workers: defineTable(tableFields.workers)
     .index("by_name", ["name"])
     .index("by_status", ["status"]),
@@ -22,4 +23,8 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_work_item", ["workItemId"]),
   toolDefinitions: defineTable(tableFields.toolDefinitions).index("by_key", ["key"]),
+  messages: defineTable(tableFields.messages)
+    .index("by_provider_message_id", ["provider", "providerMessageId"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_person", ["personId"]),
 });

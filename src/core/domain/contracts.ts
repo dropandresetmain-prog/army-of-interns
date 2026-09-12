@@ -129,6 +129,26 @@ export interface ToolDefinition {
   requiredPermissions: ToolPermissionId[];
 }
 
+/** Provider-agnostic channel message persisted for transport/correlation. */
+export type MessageDirection = "inbound" | "outbound";
+export type MessageChannel = "whatsapp";
+export type MessageProvider = "twilio";
+export type ChannelMessageStatus = "received" | "sent" | "failed";
+
+export interface ChannelMessage {
+  provider: MessageProvider;
+  providerMessageId: string;
+  direction: MessageDirection;
+  channel: MessageChannel;
+  /** Normalized E.164. Persist for correlation; never show in public UI. */
+  participantAddress: string;
+  personId?: EntityId;
+  body: string;
+  status: ChannelMessageStatus;
+  createdAt: number;
+  providerMetadata?: Metadata;
+}
+
 export interface WorkerSpec {
   name: string;
   title: string;

@@ -108,6 +108,35 @@ const personFields = {
   scenarioMetadata: v.optional(metadataValidator),
 };
 
+export const messageDirectionValidator = v.union(
+  v.literal("inbound"),
+  v.literal("outbound"),
+);
+
+export const messageChannelValidator = v.literal("whatsapp");
+
+export const messageProviderValidator = v.literal("twilio");
+
+export const channelMessageStatusValidator = v.union(
+  v.literal("received"),
+  v.literal("sent"),
+  v.literal("failed"),
+);
+
+const channelMessageFields = {
+  provider: messageProviderValidator,
+  providerMessageId: v.string(),
+  direction: messageDirectionValidator,
+  channel: messageChannelValidator,
+  // Normalized E.164 — used for correlation only; public queries must not expose it.
+  participantAddress: v.string(),
+  personId: v.optional(v.id("people")),
+  body: v.string(),
+  status: channelMessageStatusValidator,
+  createdAt: v.number(),
+  providerMetadata: v.optional(metadataValidator),
+};
+
 const workerFields = {
   name: v.string(),
   title: v.string(),
@@ -205,6 +234,7 @@ export const tableFields = {
   approvals: approvalFields,
   events: eventFields,
   toolDefinitions: toolDefinitionFields,
+  messages: channelMessageFields,
 };
 
 const systemFields = {
@@ -233,4 +263,26 @@ export const eventDocumentValidator = v.object({
   _id: v.id("events"),
   _creationTime: v.number(),
   ...eventFields,
+});
+
+export const channelMessageDocumentValidator = v.object({
+  _id: v.id("messages"),
+  _creationTime: v.number(),
+  ...channelMessageFields,
+});
+
+/** Public UI projection — deliberately omits participantAddress / phone numbers. */
+export const publicChannelMessageValidator = v.object({
+  _id: v.id("messages"),
+  _creationTime: v.number(),
+  provider: messageProviderValidator,
+  providerMessageId: v.string(),
+  direction: messageDirectionValidator,
+  channel: messageChannelValidator,
+  personId: v.optional(v.id("people")),
+  personDisplayName: v.union(v.string(), v.null()),
+  body: v.string(),
+  status: channelMessageStatusValidator,
+  createdAt: v.number(),
+  correlated: v.boolean(),
 });

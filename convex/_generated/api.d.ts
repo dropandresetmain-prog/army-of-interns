@@ -10,6 +10,9 @@
 
 import type * as companyProfiles from "../companyProfiles.js";
 import type * as events from "../events.js";
+import type * as http from "../http.js";
+import type * as messaging from "../messaging.js";
+import type * as messagingOutbound from "../messagingOutbound.js";
 import type * as model_validators from "../model/validators.js";
 import type * as seed from "../seed.js";
 import type * as workItems from "../workItems.js";
@@ -24,6 +27,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   companyProfiles: typeof companyProfiles;
   events: typeof events;
+  http: typeof http;
+  messaging: typeof messaging;
+  messagingOutbound: typeof messagingOutbound;
   "model/validators": typeof model_validators;
   seed: typeof seed;
   workItems: typeof workItems;

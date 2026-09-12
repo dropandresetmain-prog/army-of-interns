@@ -1,6 +1,6 @@
 :root {
   color-scheme: light dark;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", Tahoma, sans-serif;
   background: #151713;
   color: #f4f0e6;
 }
@@ -13,22 +13,89 @@ body {
   margin: 0;
 }
 
-main {
-  display: grid;
+main.spine {
+  display: block;
   min-height: 100vh;
-  place-items: center;
-  padding: 2rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem;
 }
 
-section {
-  max-width: 42rem;
+header {
+  margin-bottom: 1.25rem;
 }
 
 h1 {
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
 }
 
-p {
+.lede,
+.status,
+.meta,
+.empty {
   color: #c8c3b7;
-  line-height: 1.6;
+}
+
+.lede {
+  margin: 0;
+  max-width: 40rem;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+button {
+  appearance: none;
+  border: 1px solid #5c6354;
+  background: #242820;
+  color: inherit;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.columns {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+li {
+  display: grid;
+  gap: 0.2rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #2d3229;
+}
+
+.meta {
+  font-size: 0.8rem;
+}
+
+.body {
+  line-height: 1.4;
 }
