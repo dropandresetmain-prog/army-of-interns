@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { CONTROLLED_CAPABILITIES } from "../src/core/workforce/capabilityCatalog";
 import { mutation } from "./_generated/server";
 
 const DEMO_COMPANY_NAME = "Army of Interns Demo";
@@ -15,6 +16,7 @@ export const bootstrapDemo = mutation({
     createdCompany: v.boolean(),
     createdOwner: v.boolean(),
     createdManager: v.boolean(),
+    capabilityCount: v.number(),
   }),
   handler: async (ctx) => {
     const existingOwner = await ctx.db
@@ -71,6 +73,23 @@ export const bootstrapDemo = mutation({
         promotionEligible: false,
       }));
 
+    let capabilityCount = 0;
+    for (const definition of CONTROLLED_CAPABILITIES) {
+      const existing = await ctx.db
+        .query("capabilities")
+        .withIndex("by_key", (q) => q.eq("key", definition.key))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("capabilities", {
+          key: definition.key,
+          name: definition.name,
+          description: definition.description,
+          defaultToolPermissionIds: [...definition.defaultToolPermissionIds],
+        });
+      }
+      capabilityCount += 1;
+    }
+
     return {
       companyId,
       ownerPersonId,
@@ -78,6 +97,7 @@ export const bootstrapDemo = mutation({
       createdCompany: existingCompany === null,
       createdOwner: existingOwner === null,
       createdManager: existingManager === null,
+      capabilityCount,
     };
   },
 });

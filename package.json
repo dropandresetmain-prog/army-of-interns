@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify:convex": "node --env-file=.env.local scripts/verify-convex.mjs",
-    "verify:s2": "node --env-file=.env.local scripts/verify-s2.mjs"
+    "verify:s2": "node --env-file=.env.local scripts/verify-s2.mjs",
+    "verify:s3": "node --env-file=.env.local scripts/verify-s3.mjs"
   },
   "dependencies": {
     "convex": "^1.45.0",

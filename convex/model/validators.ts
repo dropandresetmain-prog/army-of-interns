@@ -259,6 +259,18 @@ export const workItemDocumentValidator = v.object({
   ...workItemFields,
 });
 
+export const assignmentDocumentValidator = v.object({
+  _id: v.id("assignments"),
+  _creationTime: v.number(),
+  ...assignmentFields,
+});
+
+export const capabilityDocumentValidator = v.object({
+  _id: v.id("capabilities"),
+  _creationTime: v.number(),
+  ...capabilityFields,
+});
+
 export const eventDocumentValidator = v.object({
   _id: v.id("events"),
   _creationTime: v.number(),

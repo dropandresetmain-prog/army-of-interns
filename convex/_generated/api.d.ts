@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as assignments from "../assignments.js";
+import type * as capabilities from "../capabilities.js";
 import type * as companyProfiles from "../companyProfiles.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
@@ -17,6 +19,7 @@ import type * as model_validators from "../model/validators.js";
 import type * as seed from "../seed.js";
 import type * as workItems from "../workItems.js";
 import type * as workers from "../workers.js";
+import type * as workforce from "../workforce.js";
 
 import type {
   ApiFromModules,
@@ -25,6 +28,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  assignments: typeof assignments;
+  capabilities: typeof capabilities;
   companyProfiles: typeof companyProfiles;
   events: typeof events;
   http: typeof http;
@@ -34,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   workItems: typeof workItems;
   workers: typeof workers;
+  workforce: typeof workforce;
 }>;
 
 /**

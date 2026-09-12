@@ -21,6 +21,11 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["./**/*", "../src/integrations/twilio/**/*"],
+  "include": [
+    "./**/*",
+    "../src/integrations/twilio/**/*",
+    "../src/core/domain/**/*",
+    "../src/core/workforce/**/*"
+  ],
   "exclude": ["./_generated"]
 }
