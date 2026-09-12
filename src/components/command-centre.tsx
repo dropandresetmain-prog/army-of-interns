@@ -5,7 +5,7 @@ import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock3, Expand, Flag, Radio, ShieldCheck, UsersRound } from "lucide-react";
 import { OrgChart } from "./org-chart";
-import { rankMark, type CommandCentreState, type QuoteView } from "@/lib/command-centre-types";
+import { type CommandCentreState, type QuoteView } from "@/lib/command-centre-types";
 
 const TENANT_JOIN = "https://t.me/army_of_intern_demo_bot?start=tenant";
 const CONTRACTOR_JOIN = "https://t.me/army_of_intern_demo_bot?start=contractor";
@@ -99,7 +99,7 @@ export function CommandCentre({ initialState }: { initialState: CommandCentreSta
       <header className="topbar">
         <div>
           <p className="eyebrow">
-            <Radio size={12} /> Live command centre
+            <Radio size={12} /> Live workspace
           </p>
           <h1>Army of Interns</h1>
         </div>
@@ -264,7 +264,7 @@ export function CommandCentre({ initialState }: { initialState: CommandCentreSta
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Structured telemetry</p>
-              <h2>AI Operations Feed</h2>
+              <h2>Activity</h2>
             </div>
             <Clock3 size={18} />
           </div>
@@ -294,7 +294,7 @@ export function CommandCentre({ initialState }: { initialState: CommandCentreSta
       </section>
       {promotedWorker && (
         <div className="promotion-toast">
-          <span>{rankMark[promotedWorker.rank]}</span>
+          <span className="employment-chip employment-chip--permanent">Permanent</span>
           <div>
             <b>{promotedWorker.name} promoted</b>
             <small>

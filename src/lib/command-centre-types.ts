@@ -80,12 +80,12 @@ export interface CommandCentreState {
   participants: ParticipantCounts;
 }
 
-export const rankMark: Record<Rank, string> = {
-  intern: "⌃",
-  permanent: "⌃⌃",
-  senior: "⌃⌃⌃",
-  lead: "◆",
-  manager: "★"
+export const rankTitle: Record<Rank, string> = {
+  intern: "Intern",
+  permanent: "Permanent employee",
+  senior: "Senior",
+  lead: "Lead",
+  manager: "Manager"
 };
 
 export const statusLabel: Record<WorkerStatus, string> = {

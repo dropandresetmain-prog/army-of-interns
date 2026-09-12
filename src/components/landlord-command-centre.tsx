@@ -272,7 +272,7 @@ function LandlordNav() {
 
 export function LandlordCommandCentre() {
   const [voice, setVoice] = useState<(typeof voiceOptions)[number]>("Normal English");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
