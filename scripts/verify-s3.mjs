@@ -10,6 +10,10 @@ if (!deploymentUrl) {
 }
 
 const client = new ConvexHttpClient(deploymentUrl);
+const adminSecret = process.env.DEMO_ADMIN_SECRET;
+if (!adminSecret) {
+  throw new Error("DEMO_ADMIN_SECRET is required. Set it in .env.local and Convex env.");
+}
 const bootstrapDemo = makeFunctionReference("seed:bootstrapDemo");
 const resetTransientDemoState = makeFunctionReference(
   "seed:resetTransientDemoState",
@@ -21,29 +25,31 @@ const listAssignments = makeFunctionReference("assignments:list");
 const listEvents = makeFunctionReference("events:list");
 const listCapabilities = makeFunctionReference("capabilities:list");
 
-await client.mutation(bootstrapDemo, {});
-// Deterministic create→reuse proof requires a clean transient workforce.
-await client.mutation(resetTransientDemoState, {});
+await client.mutation(bootstrapDemo, { adminSecret });
+// Reset must retain permanent staff while removing temporary interns/work.
+await client.mutation(resetTransientDemoState, { adminSecret });
 
 const maintenanceText = "The toilet in Room 3 is leaking.";
 const marketingText = "Prepare our Instagram posts for next week.";
 
 const first = await client.mutation(intakeAndStaff, { text: maintenanceText });
-assert.equal(first.staffingKind, "create");
-assert.equal(first.workerCreated, true);
+assert.equal(first.staffingKind, "reuse");
+assert.equal(first.workerCreated, false);
 assert.ok(first.requiredCapabilityKeys.includes("maintenance_triage"));
 assert.ok(first.requiredCapabilityKeys.includes("stakeholder_messaging"));
 
-const workersAfterCreate = await client.query(listWorkers, {});
-const createdWorker = workersAfterCreate.find(
+const workersAfterAssignment = await client.query(listWorkers, {});
+const assignedWorker = workersAfterAssignment.find(
   (worker) => worker._id === first.workerId,
 );
-assert.ok(createdWorker, "Created worker must persist before assignment.");
-assert.equal(createdWorker.title, "Operations Intern");
+assert.ok(assignedWorker, "Assigned permanent worker must persist before assignment.");
+assert.equal(assignedWorker.name, "Shu Zhen");
+assert.equal(assignedWorker.title, "Property Operations Executive");
+assert.equal(assignedWorker.employmentType, "permanent");
 
-const assignmentsAfterCreate = await client.query(listAssignments, {});
+const assignmentsAfterAssignment = await client.query(listAssignments, {});
 assert.ok(
-  assignmentsAfterCreate.some(
+  assignmentsAfterAssignment.some(
     (assignment) =>
       assignment._id === first.assignmentId &&
       assignment.workerId === first.workerId &&
@@ -52,22 +58,22 @@ assert.ok(
   "Assignment must link work item and persisted worker.",
 );
 
-const eventsAfterCreate = await client.query(listEvents, {});
-const firstEventTypes = eventsAfterCreate
+const eventsAfterAssignment = await client.query(listEvents, {});
+const firstEventTypes = eventsAfterAssignment
   .filter((event) => event.workItemId === first.workItemId)
   .map((event) => event.eventType);
 for (const required of [
   "work_received",
   "capabilities_identified",
-  "staffing_requested",
-  "worker_created",
+  "worker_matched",
   "assignment_started",
 ]) {
   assert.ok(
     firstEventTypes.includes(required),
-    `Missing event ${required} on create path`,
+    `Missing event ${required} on permanent-staff path`,
   );
 }
+assert.ok(!firstEventTypes.includes("worker_created"));
 
 const second = await client.mutation(intakeAndStaff, { text: maintenanceText });
 assert.equal(second.staffingKind, "reuse");
@@ -75,7 +81,7 @@ assert.equal(second.workerCreated, false);
 assert.equal(
   second.workerId,
   first.workerId,
-  "Second same-capability request must reuse the existing worker.",
+  "Second maintenance request must reuse Shu Zhen.",
 );
 
 const reuseEvents = (await client.query(listEvents, {}))
@@ -109,8 +115,8 @@ assert.ok(capabilities.some((capability) => capability.key === "content_marketin
 console.log(
   JSON.stringify(
     {
-      maintenanceCreate: true,
-      workerPersistedBeforeAssignment: true,
+      permanentOperationsStaffRetained: true,
+      shuZhenAssignedBeforeAnyInternCreation: true,
       maintenanceReuse: true,
       reusedWorkerId: second.workerId,
       marketingCreate: true,
