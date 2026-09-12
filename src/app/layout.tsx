@@ -5,8 +5,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Army of Interns",
-  description: "An adaptive AI workforce for SMEs",
+  title: "Army of Interns | Command Centre",
+  description: "Live adaptive workforce command centre",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

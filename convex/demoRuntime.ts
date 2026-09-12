@@ -1,12 +1,13 @@
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import {
   canConfirmContractor,
   CONTRACTOR_SOLICITATION,
   DEMO_BUDGET,
+  DEMO_DEADLINE_LABEL,
   DEMO_OPS_WORKER,
   DEMO_OWNER,
   DEMO_PROCUREMENT_WORKER,
@@ -1066,3 +1067,344 @@ export const resetDemo = mutation({
     return { ok: true };
   },
 });
+
+const uiRankValidator = v.union(
+  v.literal("intern"),
+  v.literal("permanent"),
+  v.literal("senior"),
+  v.literal("lead"),
+  v.literal("manager"),
+);
+
+const uiWorkerStatusValidator = v.union(
+  v.literal("idle"),
+  v.literal("thinking"),
+  v.literal("using_tool"),
+  v.literal("waiting_human"),
+  v.literal("delegating"),
+  v.literal("blocked"),
+  v.literal("complete"),
+);
+
+const commandCentreSnapshotValidator = v.object({
+  phase: v.string(),
+  workers: v.array(
+    v.object({
+      id: v.string(),
+      name: v.string(),
+      title: v.string(),
+      employmentType: v.union(v.literal("intern"), v.literal("permanent")),
+      rank: uiRankValidator,
+      managerAgentId: v.optional(v.string()),
+      status: uiWorkerStatusValidator,
+      capabilities: v.array(v.string()),
+    }),
+  ),
+  workItem: v.optional(
+    v.object({
+      id: v.string(),
+      title: v.string(),
+      tenantCallsign: v.string(),
+      status: v.string(),
+      budget: v.optional(v.number()),
+      deadline: v.optional(v.string()),
+      assignedWorkerIds: v.array(v.string()),
+      waitingOn: v.optional(v.string()),
+      completionVerified: v.boolean(),
+    }),
+  ),
+  events: v.array(
+    v.object({
+      id: v.string(),
+      timestamp: v.number(),
+      workerId: v.optional(v.string()),
+      workItemId: v.optional(v.string()),
+      type: v.string(),
+      summary: v.string(),
+      detail: v.optional(v.string()),
+    }),
+  ),
+  quotes: v.array(
+    v.object({
+      id: v.string(),
+      contractorCallsign: v.string(),
+      price: v.optional(v.number()),
+      availability: v.string(),
+      withinBudget: v.optional(v.boolean()),
+      meetsDeadline: v.optional(v.boolean()),
+      viable: v.optional(v.boolean()),
+      selected: v.optional(v.boolean()),
+      recommendation: v.optional(v.string()),
+    }),
+  ),
+  approval: v.optional(
+    v.object({
+      status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+      action: v.string(),
+      requestedFrom: v.string(),
+    }),
+  ),
+  participants: v.object({
+    ownerReady: v.boolean(),
+    tenant: v.object({ joined: v.number(), required: v.number() }),
+    contractors: v.object({ joined: v.number(), required: v.number() }),
+  }),
+});
+
+function presentationWorkerId(name: string, fallback: string): string {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("alex")) {
+    return "alex";
+  }
+  if (normalized.includes("shu")) {
+    return "shu-zhen";
+  }
+  if (normalized.includes("daniel")) {
+    return "daniel";
+  }
+  return fallback;
+}
+
+function presentationRank(rank: string): "intern" | "permanent" | "senior" | "lead" | "manager" {
+  if (rank === "employee") {
+    return "permanent";
+  }
+  if (rank === "intern" || rank === "senior" || rank === "lead" || rank === "manager") {
+    return rank;
+  }
+  return "intern";
+}
+
+function waitingOnForPhase(phase: string): string | undefined {
+  switch (phase) {
+    case "awaiting_tenant_diagnosis":
+      return "Tenant diagnosis";
+    case "soliciting_quotes":
+      return "Contractor quotes";
+    case "awaiting_owner_approval":
+      return "Owner approval";
+    case "rejected_resourcing":
+      return "Re-source after rejection";
+    case "awaiting_contractor_done":
+      return "Contractor completion";
+    case "awaiting_tenant_verification":
+      return "Tenant verification";
+    case "awaiting_promotion":
+      return "Promotion decision";
+    default:
+      return undefined;
+  }
+}
+
+function presentationWorkerStatus(
+  worker: Doc<"workers">,
+  latestEventType: string | undefined,
+  workCompleted: boolean,
+): "idle" | "thinking" | "using_tool" | "waiting_human" | "delegating" | "blocked" | "complete" {
+  if (workCompleted && worker.status === "idle") {
+    return "complete";
+  }
+  if (worker.status === "blocked") {
+    return "blocked";
+  }
+  if (worker.status === "awaiting_approval") {
+    return "waiting_human";
+  }
+  if (latestEventType === "tool_called") {
+    return "using_tool";
+  }
+  if (latestEventType === "human_contacted") {
+    return "waiting_human";
+  }
+  if (latestEventType === "staffing_requested" || latestEventType === "worker_created") {
+    return "delegating";
+  }
+  if (latestEventType === "work_completed" || latestEventType === "worker_promoted") {
+    return "complete";
+  }
+  if (worker.status === "working") {
+    return "thinking";
+  }
+  return "idle";
+}
+
+function approvalActionLabel(approval: Doc<"approvals">): string {
+  if (approval.actionType === "confirm_contractor_spend") {
+    const payload = approval.payload as { selectedName?: string; price?: number };
+    const name = payload.selectedName ?? "contractor";
+    const price = typeof payload.price === "number" ? ` at ${DEMO_BUDGET.currency} ${payload.price}` : "";
+    return `${approval.reason} Proposed: confirm ${name}${price}.`;
+  }
+  if (approval.actionType === "promote_worker") {
+    return approval.reason;
+  }
+  return approval.reason || approval.actionType;
+}
+
+/**
+ * Read-only command-centre projection. Does not decide staffing, ranking,
+ * approval, or promotion — it only shapes persisted runtime state for the UI.
+ */
+export const getCommandCentreSnapshot = query({
+  args: {},
+  returns: commandCentreSnapshotValidator,
+  handler: async (ctx: QueryCtx) => {
+    const state = await ctx.db
+      .query("demoState")
+      .withIndex("by_key", (q) => q.eq("key", DEMO_STATE_KEY))
+      .first();
+
+    const workers = await ctx.db.query("workers").take(50);
+    const capabilities = await ctx.db.query("capabilities").take(50);
+    const people = await ctx.db.query("people").take(50);
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(80);
+
+    const capabilityNameById = new Map(capabilities.map((capability) => [capability._id, capability.name]));
+    const presentationIdByWorkerId = new Map(
+      workers.map((worker) => [worker._id, presentationWorkerId(worker.name, worker._id)]),
+    );
+
+    const workItem = state?.workItemId ? await ctx.db.get(state.workItemId) : null;
+    const assignments = workItem
+      ? await ctx.db
+          .query("assignments")
+          .withIndex("by_work_item", (q) => q.eq("workItemId", workItem._id))
+          .take(20)
+      : [];
+    const quotes = workItem
+      ? await ctx.db
+          .query("contractorQuotes")
+          .withIndex("by_work_item", (q) => q.eq("workItemId", workItem._id))
+          .take(20)
+      : [];
+
+    const latestEventTypeByWorker = new Map<string, string>();
+    for (const event of events) {
+      if (event.workerId && !latestEventTypeByWorker.has(event.workerId)) {
+        latestEventTypeByWorker.set(event.workerId, event.eventType);
+      }
+    }
+
+    const workCompleted = workItem?.status === "completed";
+    const presentedWorkers = workers.map((worker) => {
+      const managerId = worker.managerWorkerId
+        ? presentationIdByWorkerId.get(worker.managerWorkerId)
+        : worker.name.toLowerCase().includes("alex")
+          ? undefined
+          : "alex";
+      return {
+        id: presentationWorkerId(worker.name, worker._id),
+        name: worker.name,
+        title: worker.title,
+        employmentType: worker.employmentType,
+        rank: presentationRank(worker.rank),
+        managerAgentId: managerId,
+        status: presentationWorkerStatus(
+          worker,
+          latestEventTypeByWorker.get(worker._id),
+          workCompleted,
+        ),
+        capabilities: worker.capabilityIds
+          .map((id) => capabilityNameById.get(id))
+          .filter((name): name is string => Boolean(name)),
+      };
+    });
+
+    const tenantPerson =
+      people.find((person) => person.demoCallsign === DEMO_TENANT.demoCallsign) ??
+      people.find((person) => person.roleType === "tenant");
+    const ownerPerson =
+      people.find((person) => person.demoCallsign === DEMO_OWNER.demoCallsign) ??
+      people.find((person) => person.roleType === "business_owner");
+    const contractorPeople = people.filter((person) => person.roleType === "contractor" && person.active);
+
+    const telegramReady = (person?: Doc<"people"> | null) =>
+      Boolean(person?.active && person.telegramChatId);
+
+    const currentApprovalId =
+      state?.phase === "awaiting_promotion"
+        ? state.promotionApprovalId
+        : (state?.approvalId ?? state?.promotionApprovalId);
+    const approval = currentApprovalId ? await ctx.db.get(currentApprovalId) : null;
+
+    const approvalRejected = approval?.status === "rejected";
+    const selectedContractorId = approvalRejected ? undefined : state?.selectedContractorPersonId;
+
+    const presentedQuotes = quotes.map((quote) => {
+      const contractor = people.find((person) => person._id === quote.personId);
+      const selected = Boolean(
+        selectedContractorId && quote.personId === selectedContractorId,
+      ) || Boolean(!approvalRejected && selectedContractorId === undefined && quote.rank === 1);
+      return {
+        id: quote._id,
+        contractorCallsign: contractor?.displayName ?? contractor?.demoCallsign ?? "Contractor",
+        price: quote.price,
+        availability: quote.availability ?? "Awaiting availability",
+        withinBudget: quote.withinBudget,
+        meetsDeadline: quote.meetsDeadline,
+        viable: quote.viable,
+        selected,
+        recommendation: selected
+          ? quote.rejectedReason
+            ? undefined
+            : "Recommended by procurement"
+          : quote.rejectedReason,
+      };
+    });
+
+    return {
+      phase: state?.phase ?? "idle",
+      workers: presentedWorkers,
+      workItem: workItem
+        ? {
+            id: workItem._id,
+            title: workItem.objective,
+            tenantCallsign: tenantPerson?.displayName ?? DEMO_TENANT.displayName,
+            status: workItem.status,
+            budget: workItem.budget?.amount ?? DEMO_BUDGET.amount,
+            deadline:
+              workItem.constraints.find((constraint) => /today|deadline/i.test(constraint)) ??
+              DEMO_DEADLINE_LABEL,
+            assignedWorkerIds: assignments.map(
+              (assignment) =>
+                presentationIdByWorkerId.get(assignment.workerId) ?? assignment.workerId,
+            ),
+            waitingOn: waitingOnForPhase(state?.phase ?? "idle"),
+            completionVerified: workItem.status === "completed",
+          }
+        : undefined,
+      events: events.map((event) => ({
+        id: event._id,
+        timestamp: event.timestamp,
+        workerId: event.workerId ? presentationIdByWorkerId.get(event.workerId) : undefined,
+        workItemId: event.workItemId,
+        type: event.eventType,
+        summary: event.summary,
+      })),
+      quotes: presentedQuotes,
+      approval: approval
+        ? {
+            status: approval.status,
+            action: approvalActionLabel(approval),
+            requestedFrom: ownerPerson?.displayName ?? "Business Owner",
+          }
+        : undefined,
+      participants: {
+        ownerReady: telegramReady(ownerPerson),
+        tenant: { joined: telegramReady(tenantPerson) ? 1 : 0, required: 1 },
+        contractors: {
+          joined: Math.min(
+            contractorPeople.filter((person) => telegramReady(person)).length,
+            3,
+          ),
+          required: 3,
+        },
+      },
+    };
+  },
+});
+

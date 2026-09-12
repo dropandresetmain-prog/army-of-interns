@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify:convex": "node --env-file=.env.local scripts/verify-convex.mjs",
@@ -16,20 +17,33 @@
   },
   "dependencies": {
     "@openai/agents": "^0.18.0",
+    "@xyflow/react": "^12.9.3",
+    "canvas-confetti": "^1.9.4",
     "convex": "^1.45.0",
+    "lucide-react": "^0.468.0",
+    "motion": "^12.23.24",
     "next": "^16.3.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "three": "^0.186.0",
     "zod": "^4.6.2"
   },
   "engines": {
     "node": ">=20.9.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "typescript": "^7.0.2",
+    "@types/three": "^0.186.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.33.0",
+    "eslint-config-next": "^16.3.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
     "vitest": "^5.0.0"
   }
 }
