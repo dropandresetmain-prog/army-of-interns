@@ -11,12 +11,18 @@ function WorkerNode({ data }: NodeProps<Node<{ worker: WorkforceWorker }>>) {
 
 const nodeTypes = { worker: WorkerNode };
 
+function readToken(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 export function OrgChart({ workers }: { workers: WorkforceWorker[] }) {
+  const borderColor = readToken("--aoi-bdr", "#E2E7E4");
   const nodes: Node<{ worker: WorkforceWorker }>[] = workers.map((worker, index) => ({
     id: worker.id, type: "worker", data: { worker },
     position: worker.managerAgentId ? { x: 40 + (index - 1) * 278, y: 190 } : { x: 320, y: 20 },
     draggable: false, selectable: false
   }));
-  const edges = workers.filter((worker) => worker.managerAgentId).map((worker) => ({ id: `${worker.managerAgentId}-${worker.id}`, source: worker.managerAgentId!, target: worker.id, animated: worker.status !== "idle", style: { stroke: "#9b8550", strokeWidth: 1.5 } }));
-  return <div className="org-chart"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.32 }} nodesConnectable={false} nodesDraggable={false} panOnDrag={false} zoomOnScroll={false} zoomOnPinch={false} proOptions={{ hideAttribution: true }}><Background color="#30332d" gap={24} size={1} /><Controls showInteractive={false} /></ReactFlow></div>;
+  const edges = workers.filter((worker) => worker.managerAgentId).map((worker) => ({ id: `${worker.managerAgentId}-${worker.id}`, source: worker.managerAgentId!, target: worker.id, animated: worker.status !== "idle", style: { stroke: borderColor, strokeWidth: 1.5 } }));
+  return <div className="org-chart"><ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.32 }} nodesConnectable={false} nodesDraggable={false} panOnDrag={false} zoomOnScroll={false} zoomOnPinch={false} proOptions={{ hideAttribution: true }}><Background color={borderColor} gap={24} size={1} /><Controls showInteractive={false} /></ReactFlow></div>;
 }
