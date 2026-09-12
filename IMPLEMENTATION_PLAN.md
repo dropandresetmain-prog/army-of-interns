@@ -8,7 +8,7 @@ Build a live, audience-participation demo of a **generic adaptive AI workforce f
 
 The product starts with one persistent AI manager. When work arrives, the manager should:
 
-1. understand the requested outcome and constraints;
+1. understand the requested outcome, context, constraints, and success criteria;
 2. determine which capabilities are required;
 3. inspect the current workforce;
 4. reuse a suitable worker when one exists;
@@ -21,7 +21,7 @@ The product starts with one persistent AI manager. When work arrives, the manage
 
 The hackathon demo must prove **execution, not merely advice**. The system must change external state, coordinate real humans, and make it unreasonable to say, “I could just ask ChatGPT for the answer.”
 
-Core product thesis:
+Core thesis:
 
 > You do not manually design your AI organisation. You give your AI manager work, and the organisation forms around the work your business actually needs.
 
@@ -65,7 +65,7 @@ The repository must visibly contain reusable architecture rather than a hardcode
 
 ### Usefulness & Agentic Experience
 
-The owner should manage the business outcome, not an agent graph.
+The owner manages the business outcome, not an agent graph.
 
 The intended interaction is simply:
 
@@ -118,34 +118,7 @@ Recommend workforce change if warranted
 
 The property-maintenance experience is a **scenario adapter / demo fixture** built on top of this engine.
 
-Target code separation:
-
-```text
-src/
-  core/
-    orchestration/
-    workforce/
-    capabilities/
-    approvals/
-    events/
-    tools/
-
-  integrations/
-    twilio/
-    openrouter/
-
-  scenarios/
-    property-maintenance/
-
-app/
-  command-centre/
-
-convex/
-  schema.ts
-  ...
-```
-
-Exact directories may change as the implementation takes shape, but the dependency direction must remain:
+Target dependency direction:
 
 ```text
 scenario adapter -> generic core -> integrations
@@ -165,71 +138,48 @@ A reviewer should be able to replace the property-maintenance scenario without r
 
 The demo simulates a small property-operations SME and uses live audience participation.
 
-### Human roles
+Human roles:
 
 - 1 Business Owner
 - 1 Tenant
 - 3 Contractors
 
-### AI workforce at demo start
+Initial AI workforce:
 
 - Alex — permanent AI General Manager
 
-### AI workers created during the demo
+Workers created during the demo:
 
 - an Operations Intern, presented as Shu Zhen;
 - a Procurement Intern, presented as Kai.
 
-Names and personalities are persistent worker data / presentation identities. Core orchestration must rely on worker IDs, capabilities, permissions, and assignments rather than hardcoded names.
+Names/personality are persistent worker data and presentation identities. Core orchestration relies on worker IDs, capabilities, permissions, and assignments.
 
 ### Required live flow
 
 1. Audience participants join the WhatsApp demo and are assigned Tenant or Contractor roles.
 2. The Business Owner is already registered.
-3. The Tenant sends a natural WhatsApp message reporting a leaking toilet.
-4. The request becomes a generic `workItem` with objective, context, constraints, and success criteria.
+3. The Tenant reports a leaking toilet through WhatsApp.
+4. The request becomes a generic `workItem`.
 5. Alex identifies required maintenance/property-operations capability.
-6. Alex inspects the workforce and finds no suitable worker.
-7. Alex creates an Operations Intern from a generic `WorkerSpec`; the UI presents the new persistent identity as Shu Zhen.
-8. Shu Zhen receives an assignment and contacts the Tenant through WhatsApp.
-9. Shu Zhen asks concise diagnostic questions and classifies the issue as plumbing maintenance.
-10. Shu Zhen identifies a second capability need: contractor/vendor sourcing.
-11. Shu Zhen requests staffing instead of silently expanding her own role.
-12. Alex creates a Procurement Intern from another `WorkerSpec`; the UI presents that worker as Kai.
-13. Kai uses generic option-solicitation tooling to contact 3 live Contractor participants.
-14. Contractors reply naturally with price and availability.
-15. The system extracts structured response data and ranks viable options using explicit scenario rules.
-16. Alex presents the recommended option to the Business Owner and requests approval before any spend-committing confirmation.
-17. The Business Owner approves through WhatsApp.
-18. The selected Contractor receives confirmation; non-selected Contractors receive a polite rejection; the Tenant receives the appointment update.
-19. The selected Contractor reports completion.
-20. Shu Zhen asks the Tenant to verify the issue is fixed.
-21. The Tenant confirms resolution.
-22. The work item closes only after outcome verification.
-23. Shu Zhen’s seeded history plus the live successful assignment crosses the promotion threshold.
-24. Alex recommends retaining/promoting Shu Zhen.
-25. The Business Owner approves the promotion.
-26. The live dashboard visibly updates Shu Zhen from temporary intern to permanent Property Operations Executive.
-
-End-state visual:
-
-```text
-Before
-
-★ Alex
-General Manager
-
-After
-
-★ Alex
-General Manager
-├── ⌃⌃ Shu Zhen
-│   Property Operations Executive
-│   PERMANENT
-└── ⌃ Kai
-    Procurement Intern
-    TEMPORARY
-```
+6. Alex finds no suitable worker and creates an Operations Intern from a generic `WorkerSpec`.
+7. Shu Zhen receives the assignment and contacts the Tenant.
+8. Shu Zhen diagnoses the issue and identifies a second capability need: contractor/vendor sourcing.
+9. Shu Zhen requests staffing instead of silently expanding her own role.
+10. Alex creates a Procurement Intern from another generic `WorkerSpec`.
+11. Kai uses generic option-solicitation tooling to contact 3 live Contractor participants.
+12. Contractors reply naturally with price and availability.
+13. The system extracts structured response data and applies explicit scenario evaluation rules.
+14. Alex presents the recommended option to the Business Owner and requests approval.
+15. Approval is required before any spend-committing confirmation.
+16. The selected Contractor is confirmed; non-selected Contractors are notified; the Tenant receives the appointment update.
+17. The selected Contractor reports completion.
+18. Shu Zhen asks the Tenant to verify success.
+19. The work item closes only after outcome verification.
+20. Shu Zhen’s seeded history plus the live success crosses the promotion threshold.
+21. Alex recommends retaining/promoting Shu Zhen.
+22. The Business Owner approves the promotion.
+23. The command centre visibly updates Shu Zhen from temporary intern to permanent Property Operations Executive.
 
 ---
 
@@ -237,9 +187,9 @@ General Manager
 
 ### Persistent employee identity
 
-An AI employee is not the underlying model. Worker identity is application state that survives provider/model changes.
+Worker identity is application state, not the underlying model. A worker persists across provider/model changes.
 
-A worker contains, at minimum:
+Worker state includes, at minimum:
 
 - name;
 - title / role;
@@ -256,8 +206,6 @@ A worker contains, at minimum:
 
 ### Capability-based staffing
 
-The manager matches **required capabilities** on work against **worker capabilities**.
-
 Forbidden core pattern:
 
 ```ts
@@ -273,37 +221,25 @@ Current workforce match: none
 → create worker with maintenance_triage capability
 ```
 
-A later request requiring the same capability should reuse the existing suitable worker if availability and policy permit.
+A later request requiring the same capability should reuse the existing suitable worker when availability/policy permits.
 
 ### Worker breadth is bounded
 
-A worker may request staffing when required work falls outside its capability/permission envelope. This is how the organisation can later evolve into narrower specialist roles instead of turning every worker into a god agent.
-
-Automatic role splitting is not required for the hackathon.
+A worker may request staffing when required work falls outside its capability/permission envelope. This prevents every employee from becoming a god agent.
 
 ### Intern-to-employee lifecycle
 
-Interns are temporary by default. Repeated successful use can trigger a retention/promotion recommendation.
-
-For the hackathon this is deterministic rather than ML-based. Seed two prior successful Operations assignments; the live successful assignment becomes the third and triggers the recommendation.
+Interns are temporary by default. Repeated successful use can trigger a deterministic retention/promotion recommendation.
 
 ### Personality is presentation, not authority
 
-Workers can have memorable personalities and light Singlish communication styles.
-
-Demo examples:
-
-- Alex: calm, concise, pragmatic, lightly cheeky SME-manager tone;
-- Shu Zhen: efficient, proactive, slightly kancheong, light Singlish;
-- Kai: numbers-driven, transactional, concise.
-
-Personality must never alter deterministic controls such as permissions, approval thresholds, option ranking, or closure criteria.
+Workers can have memorable personalities and light Singlish communication styles. Personality must never alter permissions, approval thresholds, deterministic option ranking, or closure criteria.
 
 ### Structured visibility, not raw chain-of-thought
 
 Do not expose raw/hidden chain-of-thought.
 
-Meaningful decisions/actions emit structured events such as:
+Meaningful runtime actions emit structured events such as:
 
 - `work_received`
 - `capabilities_identified`
@@ -321,7 +257,7 @@ Meaningful decisions/actions emit structured events such as:
 - `promotion_recommended`
 - `worker_promoted`
 
-The command centre renders these as an AI Operations Feed.
+The command centre renders these as the AI Operations Feed.
 
 ---
 
@@ -334,42 +270,25 @@ The command centre renders these as an AI Operations Feed.
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
-- React Flow (`@xyflow/react`) for live org chart
-- Motion for status/spawn/promotion animations
-- Lucide icons
-- lightweight confetti effect for promotion payoff
+- React Flow (`@xyflow/react`)
+- Motion
+- Lucide
+- lightweight confetti effect
 - Vercel if venue deployment is useful
 
-Visual direction: premium SME command centre with subtle strategy-game energy. Dark charcoal base, warm off-white typography, restrained olive accents, brass/gold rank insignia. Avoid cartoonish military styling.
+Visual direction: premium SME command centre with subtle strategy-game energy. Dark charcoal, warm off-white typography, restrained olive accents, brass/gold rank insignia. Avoid cartoonish military styling.
 
 ### Backend / application state
 
 - Convex
 
-Convex is authoritative for:
-
-- company profile and policies;
-- human identities;
-- persistent AI worker identities;
-- capabilities;
-- work items;
-- assignments;
-- approvals;
-- worker history/performance counters;
-- structured events;
-- messaging correlation / idempotency state;
-- demo-participant state;
-- scenario-specific records where necessary.
-
-Use reactive queries to drive the command centre.
+Convex is authoritative for company policy, people, workers, capabilities, work items, assignments, approvals, events, message correlation/idempotency, workforce history, and scenario state.
 
 ### Messaging
 
-- Twilio WhatsApp testing/Sandbox environment
+- Twilio WhatsApp testing/Sandbox
 - inbound webhook -> Convex HTTP action
 - outbound messages -> Twilio REST API
-
-Do not add production Meta WhatsApp Business onboarding during the hackathon.
 
 ### Agent orchestration
 
@@ -379,55 +298,9 @@ Primary path:
 - OpenRouter for inference
 - free/tool-capable OpenRouter models where reliable
 
-Run a bounded compatibility spike before depending on this path:
-
-- one tool call;
-- one structured extraction;
-- one manager-to-worker delegation;
-- selected OpenRouter model through the provider path.
-
-If this path is unreliable after the bounded spike, replace only the runtime/orchestration adapter with OpenRouter Agent SDK. Convex state, tools, contracts, UI, and scenario flow remain unchanged.
+Run a bounded provider compatibility spike before depending on this path. If it fails quickly, replace only the runtime adapter with OpenRouter Agent SDK. Convex contracts, tools, scenario flow, and UI remain unchanged.
 
 Do not introduce Hermes into the hackathon core runtime.
-
-### Architecture
-
-```text
-       REAL HUMANS ON WHATSAPP
-  Owner / Tenant / Contractors
-                │
-                ▼
-              Twilio
-                │
-                ▼
-         Convex HTTP Action
-                │
-                ▼
-         Generic Work Intake
-                │
-                ▼
-       Generic Workforce Kernel
- objective → capabilities → staffing
-                │
-                ▼
-        Agent Runtime Adapter
-        OpenAI Agents SDK
-                │
-                ▼
-          Generic Tool Layer
-                │
-                ▼
-            OpenRouter
-             inference
-
-
-              Convex
-                │
-        reactive subscriptions
-                │
-                ▼
-        Next.js Command Centre
-```
 
 ---
 
@@ -447,8 +320,6 @@ Keep the schema intentionally small but generic.
 
 ### `people`
 
-Humans participating in workflows.
-
 - `displayName`
 - `roleType`
 - `whatsappNumber`
@@ -458,11 +329,7 @@ Humans participating in workflows.
 
 `tenant` and `contractor` are scenario roles, not universal core types.
 
-Never render phone numbers publicly.
-
 ### `workers`
-
-Persistent AI identities.
 
 - `name`
 - `title`
@@ -481,27 +348,14 @@ Persistent AI identities.
 
 ### `capabilities`
 
-Fields:
-
 - `key`
 - `name`
 - `description`
 - optional default tool requirements
 
-Example values:
-
-- `maintenance_triage`
-- `stakeholder_messaging`
-- `vendor_sourcing`
-- `option_evaluation`
-- `scheduling`
-- `research`
-- `content_marketing`
-- `bookkeeping`
+Examples: `maintenance_triage`, `stakeholder_messaging`, `vendor_sourcing`, `option_evaluation`, `content_marketing`, `research`, `bookkeeping`.
 
 ### `workItems`
-
-Anything the business wants accomplished.
 
 - `objective`
 - `context`
@@ -514,13 +368,7 @@ Anything the business wants accomplished.
 - `deadline`
 - optional budget/policy metadata
 
-The same object must support requests such as:
-
-- fix a leaking toilet;
-- prepare next week’s social posts;
-- chase an overdue invoice;
-- source three caterers under a budget;
-- schedule interviews.
+The same object must support maintenance, marketing, collections, sourcing, scheduling, and other SME work.
 
 ### `assignments`
 
@@ -544,11 +392,7 @@ The same object must support requests such as:
 - `requestedAt`
 - `resolvedAt`
 
-The mechanism must be generic enough for contractor spend today and other sensitive actions later.
-
 ### `events`
-
-Primary runtime-to-UI interface.
 
 - `timestamp`
 - `workerId`
@@ -576,438 +420,513 @@ Initial generic tool concepts:
 - `verify_outcome`
 - `log_event`
 
-### Scenario-specific records
-
-Scenario data such as price/availability responses should live behind the property-maintenance adapter rather than define the core orchestration contract.
-
-An `optionResponses` collection may contain:
-
-- work item ID;
-- responder person ID;
-- raw message;
-- extracted fields;
-- viability flags;
-- ranking.
+Scenario-specific data such as contractor response fields should live behind the property-maintenance adapter rather than define the core orchestration contract.
 
 ---
 
-## 8. Generic workforce manager contract
+# 8. Milestone map
 
-Alex must not contain property-management instructions.
-
-The manager loop is conceptually:
+Milestones are evidence-based checkpoints. Do not advance merely because code exists; advance when the exit criteria pass.
 
 ```text
-What outcome is requested?
-What does success look like?
-What capabilities are required?
-Who already has those capabilities?
-Who should own the work?
-Is capability missing?
-What can proceed now?
-What requires human authority?
-Has the outcome actually been achieved?
-What does this teach us about recurring workforce demand?
+SHARED
+S1 Project Skeleton & Contracts
+        ↓
+S2 Messaging & Realtime Spine
+        ↓
+S3 Generic Workforce Kernel
+        ↓
+S4 Genericity Proof & Foundation Freeze
+        ↓
+        ┌───────────────────────────────┐
+        │                               │
+        ▼                               ▼
+LANE A — RUNTIME                  LANE B — EXPERIENCE
+A1 Runtime Adapter               B1 Visual Foundation
+A2 External Execution            B2 Live Participation
+A3 Authority + Verification      B3 Workflow Theatre
+A4 Workforce Evolution           B4 Presentation Polish
+        │                               │
+        └──────── integration ──────────┘
+
+I1 Generic Workforce Integration
+I2 Live Human Execution Integration
+I3 Verified Outcome Integration
+I4 Demo Freeze / Submission Ready
 ```
 
-New workers are created from a generic `WorkerSpec`:
+---
+
+# 9. Shared milestones — complete before lane split
+
+## S1 — Project Skeleton & Shared Contracts
+
+### Objective
+
+Create the smallest stable project structure and shared contracts that both later lanes can safely build against.
+
+### Deliverables
+
+- Next.js + TypeScript app initialised;
+- Convex initialised;
+- environment handling configured; no secrets committed;
+- core schema/types created for `companyProfiles`, `people`, `workers`, `capabilities`, `workItems`, `assignments`, `approvals`, `events`, and `toolDefinitions`;
+- worker/work/approval status vocabularies defined;
+- structured event vocabulary defined;
+- generic `WorkerSpec` defined;
+- public backend query/mutation/action boundaries documented enough for both lanes.
+
+### Exit criteria
+
+- project runs locally;
+- Convex schema deploys successfully;
+- types compile;
+- a seed company + Alex can be persisted and queried;
+- an event can be inserted/read;
+- no demo-specific plumbing logic exists in the core contracts.
+
+### Dependency
+
+None.
+
+---
+
+## S2 — Messaging & Realtime Spine
+
+### Objective
+
+Prove the three transport paths the entire product depends on.
+
+### Deliverables
+
+- Twilio WhatsApp testing/Sandbox configured;
+- inbound webhook -> Convex HTTP action;
+- outbound Convex/backend -> Twilio message;
+- inbound message identity/correlation persisted;
+- Twilio message ID retained for idempotency;
+- basic realtime frontend subscription to workers/work/events.
+
+### Exit criteria
+
+All three paths work on real devices/browser:
 
 ```text
-WorkerSpec
-- role/title
-- required capabilities
-- allowed tools
-- manager relationship
-- communication style
-- model preference
-- reason for creation
+WhatsApp -> Twilio -> Convex
+Convex -> Twilio -> WhatsApp
+Convex -> reactive UI
 ```
 
-Persist the worker profile before any assignment executes.
+Manual proof:
+
+1. send `hello` from a joined WhatsApp phone;
+2. message appears in Convex/state;
+3. backend sends a test reply to that phone;
+4. inserting a worker/event updates the browser without refresh.
+
+### Dependency
+
+S1.
 
 ---
 
-## 9. Generic tool design
+## S3 — Generic Workforce Kernel
 
-Avoid demo-named tools such as `requestPlumberQuotes()`.
+### Objective
 
-### `solicitOptions`
+Implement the reusable product core before adding the property-maintenance execution path.
 
-Inputs:
+### Deliverables
 
-- target audience;
-- requirements;
-- structured fields to collect;
-- work item reference.
+- natural request -> generic `workItem`;
+- work item -> required capability analysis;
+- capability-based workforce matching;
+- reuse existing suitable worker when policy permits;
+- missing capability -> generic `WorkerSpec`;
+- `WorkerSpec` -> persisted worker;
+- assignment creation;
+- worker permission/tool mapping contract;
+- structured events emitted throughout;
+- basic UI renders workers, work items, and events from Convex state.
 
-Demo usage:
+### Exit criteria
 
-- requirement: repair leaking toilet by target time;
-- fields: price + availability.
+A natural request can travel through:
 
-The same primitive should later work for caterers, suppliers, freelancers, etc.
+```text
+request
+→ WorkItem
+→ capability analysis
+→ workforce lookup
+→ worker reuse OR WorkerSpec
+→ persisted worker
+→ assignment
+→ structured events
+→ realtime UI
+```
 
-### `requestApproval`
+A second request requiring an existing capability reuses the appropriate worker rather than creating a duplicate.
 
-Inputs:
+### Dependency
 
-- proposed action;
-- reason;
-- payload;
-- risk / authority context.
-
-### `requestStaffing`
-
-Inputs:
-
-- missing capability;
-- reason;
-- desired responsibility.
-
-### `verifyOutcome`
-
-Inputs:
-
-- configured success criteria;
-- relevant human/system evidence source.
+S2.
 
 ---
 
-# 10. Shared foundation — MUST complete before lane split
+## S4 — Genericity Proof & Foundation Freeze
 
-The foundation is shared work. It must end with a **generic workforce kernel**, not merely Twilio plumbing.
+### Objective
 
-## 10.1 Foundation deliverables
+Prove the kernel is genuinely generic and freeze the contracts before parallel work begins.
 
-1. Initialise one Next.js + TypeScript application with Convex.
-2. Install shared UI/runtime dependencies.
-3. Define and commit the generic domain schema/types from Section 7.
-4. Define and commit the event vocabulary.
-5. Configure environment handling; never commit `.env` files or credentials.
-6. Configure Twilio WhatsApp testing/Sandbox.
-7. Prove inbound WhatsApp: phone -> Twilio -> Convex.
-8. Prove outbound WhatsApp: Convex/backend -> Twilio -> phone.
-9. Prove reactive UI: Convex change -> UI update without refresh.
-10. Implement generic work intake: natural request -> `workItem`.
-11. Implement capability-analysis contract: `workItem` -> required capabilities.
-12. Implement workforce matching by capability.
-13. Implement generic worker creation: missing capability -> `WorkerSpec` -> persisted worker.
-14. Implement generic assignment creation.
-15. Emit structured events for each stage.
-16. Render workers, work items, and events in a basic realtime UI.
-17. Validate worker reuse: a second request requiring an existing capability should match the existing worker rather than create a duplicate when policy permits.
-18. Commit the working foundation before parallel lane work begins.
+### Required genericity tests
 
-## 10.2 Foundation genericity acceptance test
-
-The **same orchestration code** must handle two materially different requests.
-
-Example A:
+Request A:
 
 > “The toilet in Room 3 is leaking.”
 
 Expected:
 
 ```text
-WorkItem created
-→ maintenance capability inferred
-→ no suitable worker
-→ Operations-type WorkerSpec generated
-→ worker persisted
-→ assignment created
+WorkItem
+→ maintenance capability
+→ Operations-type worker selection/creation
+→ assignment
 ```
 
-Example B:
+Request B:
 
 > “Prepare our Instagram posts for next week.”
 
 Expected:
 
 ```text
-WorkItem created
-→ content_marketing capability inferred
-→ no suitable worker
-→ Marketing-type WorkerSpec generated
-→ worker persisted
-→ assignment created
+WorkItem
+→ content_marketing capability
+→ Marketing-type worker selection/creation
+→ assignment
 ```
 
-Passing condition:
+### Exit criteria
 
-> **No orchestration-code change between A and B.** Only request content, inferred capabilities, and generated WorkerSpec differ.
+- no orchestration-code changes between A and B;
+- worker reuse test passes;
+- event stream represents both flows generically;
+- both flows render through the same basic UI components;
+- shared schema/types/event payloads are reviewed and committed;
+- a single passing commit is designated the **foundation checkpoint**.
 
-## 10.3 Foundation gate
+Only after S4 passes may the implementation split into two lanes.
 
-Do **not** split into lanes until all of the following are demonstrated:
+### Dependency
 
-```text
-WhatsApp -> Twilio -> Convex
-Convex -> Twilio -> WhatsApp
-Convex -> reactive UI
-Natural request -> generic WorkItem
-WorkItem -> required capabilities
-Capabilities -> workforce match OR WorkerSpec
-WorkerSpec -> persisted worker
-Worker -> assignment
-Runtime changes -> structured events -> UI
-Existing capability -> worker reuse
-Two different request domains -> same orchestration path
-```
-
-The commit that passes this gate becomes the **foundation checkpoint** and starting point for both post-foundation lanes.
+S3.
 
 ---
 
-# 11. Post-foundation lane split — LOCKED OWNERSHIP
+# 10. Post-foundation lane contract
 
-Once the foundation gate passes, split into exactly two implementation lanes.
+Both lanes branch from the exact same S4 foundation checkpoint.
 
-This split is by **system boundary**, not by arbitrary frontend/backend allocation.
-
-```text
-                    SHARED FOUNDATION
-         domain contracts + Convex + kernel
-                         │
-                foundation checkpoint
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-              ▼                     ▼
-        LANE A: RUNTIME       LANE B: EXPERIENCE
-        AI + tools +          command centre +
-        messaging +           realtime theatre
-        scenario adapter
-              │                     │
-              └──────────┬──────────┘
-                         ▼
-                INTEGRATION CHECKPOINTS
-```
-
-## 11.1 Shared contract frozen at the split
-
-The following become shared contracts once the foundation checkpoint is committed:
-
-- Convex schema for core domain objects;
-- shared TypeScript domain types;
-- event names and minimum event payloads;
-- worker status vocabulary;
-- work-item status vocabulary;
-- approval status vocabulary;
-- public Convex queries/mutations/actions consumed by the other lane;
-- generic `WorkerSpec` shape;
-- tool-definition metadata shape.
-
-These contracts should be treated as **stable interfaces**, not lane-owned implementation details.
-
-## 11.2 Rule for changing shared contracts after the split
-
-If either lane discovers that a shared contract must change:
-
-1. stop building against the proposed change locally;
-2. make the smallest possible shared-contract change on its own explicit commit;
-3. ensure both lanes can consume the changed contract;
-4. merge/rebase both lane branches onto that commit;
-5. only then continue lane-specific work.
-
-Do not allow each lane to evolve its own incompatible copy of a schema/type/event.
-
-## 11.3 Lane communication boundary
-
-The two lanes communicate through:
-
-- Convex persisted state;
-- shared domain types;
-- approved events;
-- documented public backend functions.
-
-They must **not** communicate through hidden implementation coupling.
-
-Specifically:
-
-- Lane A must not call React component functions or depend on presentation-specific state.
-- Lane B must not import agent prompts, runtime SDK objects, model/provider clients, or execution internals.
-- Scenario-specific UI may read scenario state, but it must not become the authority for workflow/business decisions.
-
-## 11.4 Recommended branches after the foundation checkpoint
-
-Use two branches from the same passing foundation commit:
+Recommended branches:
 
 ```text
 feature/workforce-runtime
 feature/live-command-centre
 ```
 
-Keep shared-contract changes small and separately identifiable. Avoid broad cross-lane commits.
+## Shared contracts frozen at the split
+
+- core Convex schema;
+- shared TypeScript types;
+- event names + minimum payloads;
+- worker/work/approval status vocabularies;
+- public backend functions consumed across lanes;
+- `WorkerSpec`;
+- tool-definition metadata.
+
+## Allowed communication between lanes
+
+- Convex persisted state;
+- shared domain types;
+- approved events;
+- documented public backend functions.
+
+## Forbidden coupling
+
+- Lane A must not call React component functions or rely on presentation-only state.
+- Lane B must not import prompts, runtime SDK objects, model clients, or execution internals.
+- UI cannot become the authority for business decisions.
+
+## Shared-contract change rule
+
+If a contract must change after the split:
+
+1. stop work that depends on the proposed change;
+2. make the smallest possible shared-contract commit;
+3. verify both lanes can consume it;
+4. bring both branches onto that commit;
+5. then continue lane-specific work.
+
+Do not evolve separate incompatible versions of shared schema/types/events.
 
 ---
 
-## 12. Lane A — Workforce Runtime, Tools & Messaging
+# 11. Lane A milestones — Workforce Runtime, Tools & Messaging
+
+Lane A owns runtime/orchestration, tools, Twilio workflow processing, approvals, verification, workforce evolution, scenario adapter logic, and runtime/integration tests.
+
+Lane A does **not** own visual rendering, React Flow, presentation-mode UI, or animation behavior.
+
+## A1 — Runtime Adapter & Generic Manager
 
 ### Objective
 
-Make the generic workforce engine perform real work and complete the property-maintenance demo through the generic contracts.
+Turn the S4 generic kernel into a real agent runtime without coupling worker identity to a model/provider.
 
-### Owns
+### Deliverables
 
-- OpenAI Agents SDK runtime integration;
-- OpenRouter provider/model wiring;
-- manager orchestration logic;
-- worker factory;
-- capability analysis;
-- workforce matching;
-- worker reuse;
-- assignment/delegation logic;
-- generic tool registry and permission enforcement;
-- Twilio inbound/outbound workflow processing;
-- generic option solicitation;
-- response extraction;
-- scenario evaluation rules;
-- approval execution guards;
-- outcome verification;
-- promotion/retention rules;
+- bounded OpenAI Agents SDK + OpenRouter compatibility spike;
+- one successful tool call;
+- one successful structured extraction;
+- one manager-to-worker delegation;
+- fallback decision to OpenRouter Agent SDK if the spike is unreliable;
+- generic manager runtime;
+- worker factory from persisted `WorkerSpec`;
+- capability/permission -> allowed tool mapping enforced in code;
+- worker reuse preserved.
+
+### Exit criteria
+
+- Alex can receive a generic work item and delegate through the runtime;
+- missing capability creates a runtime-backed persisted worker;
+- existing capability reuses a worker;
+- runtime execution emits the existing shared events;
+- no worker identity depends on provider/model objects.
+
+### Dependency
+
+S4.
+
+---
+
+## A2 — External Human Execution
+
+### Objective
+
+Give workers generic primitives for coordinating real external humans through WhatsApp.
+
+### Deliverables
+
+- generic `send_message` tool;
+- generic `solicit_options` flow;
+- responder correlation to work items;
+- structured response extraction;
 - property-maintenance scenario adapter;
-- runtime/integration tests.
+- 3 joined Contractors can receive requests and reply naturally;
+- scenario-specific evaluation rules kept outside the generic solicitation primitive.
 
-### Does not own
+### Exit criteria
 
-- React Flow rendering;
-- dashboard composition;
-- visual worker cards;
-- animations;
-- presentation mode;
-- UI interpretation of event styling.
+- a worker can contact all 3 live Contractors;
+- arbitrary natural replies are correlated correctly;
+- price + availability are extracted into persisted structured response state;
+- deterministic property-demo evaluation produces an explainable recommendation;
+- duplicate inbound webhook delivery does not duplicate responses/actions.
 
-### A1. Provider/runtime spike
+### Dependency
 
-- configure OpenAI Agents SDK;
-- configure OpenRouter provider path;
-- validate selected free/tool-capable model;
-- prove one tool call;
-- prove one structured extraction;
-- prove one manager-to-worker delegation;
-- switch to OpenRouter Agent SDK if this bounded spike is unreliable.
-
-Do not spend material hackathon time defending a provider abstraction.
-
-### A2. Generic manager runtime
-
-Required actions:
-
-- inspect workforce;
-- infer required capabilities;
-- match suitable worker;
-- create worker from `WorkerSpec` when needed;
-- reuse existing worker when appropriate;
-- assign work;
-- receive worker staffing requests;
-- request human approval;
-- monitor status;
-- trigger outcome verification;
-- evaluate promotion eligibility.
-
-### A3. Worker factory and permission mapping
-
-Create runtime workers from persisted worker records / `WorkerSpec`.
-
-Tool availability must be determined by code/configuration from worker permissions, never invented by the LLM.
-
-### A4. Generic option-solicitation workflow
-
-Implement a reusable “ask multiple external humans/providers for structured options” flow.
-
-Property-maintenance adapter usage:
-
-- choose the 3 joined Contractor participants;
-- send requirements;
-- correlate replies to the active work item;
-- extract price + availability;
-- persist structured responses.
-
-### A5. Deterministic scenario evaluation
-
-For the property demo:
-
-1. reject options that miss the deadline;
-2. prefer options within budget;
-3. among equally viable options, prefer lower price;
-4. preserve data required to explain the recommendation.
-
-The generic solicitation primitive remains scenario-agnostic.
-
-### A6. Approval boundary
-
-Demo commands may be simple:
-
-- `APPROVE <work-item-id>`
-- `REJECT <work-item-id>`
-
-No spend-committing confirmation may execute until approval state is `approved`.
-
-Rejection must:
-
-- persist the rejection;
-- prevent contractor confirmation;
-- move work into a blocked/re-source state;
-- emit visible events.
-
-### A7. Outcome verification and promotion
-
-- selected Contractor reports completion;
-- Tenant verifies success;
-- work item completes only after configured verification;
-- worker success history updates;
-- promotion/retention rule runs;
-- approved promotion updates persistent worker identity.
-
-### Lane A completion gate
-
-Lane A is complete when the entire demo workflow can execute correctly **without relying on the command-centre UI for business logic or workflow state**.
+A1.
 
 ---
 
-## 13. Lane B — Live Command Centre & Demo Theatre
+## A3 — Human Authority & Verified Outcome
 
 ### Objective
 
-Make the generic workforce system understandable, trustworthy, and visually memorable while remaining a read/control surface over the shared state contracts.
+Prove that autonomous execution is bounded by explicit human authority and closes only on verified results.
 
-### Owns
+### Deliverables
 
-- visual design system;
-- realtime org chart;
-- worker cards and profile surfaces;
-- generic work-item views;
-- AI Operations Feed;
-- capability/permission visibility;
-- participant lobby;
-- property-scenario option/quote board;
+- generic approval object + execution guard;
+- owner approval request over WhatsApp;
+- approve/reject handling;
+- rejection path -> no external commitment + blocked/re-source state;
+- approval path -> winner confirmation + non-winner notifications + Tenant update;
+- completion report from selected Contractor;
+- Tenant verification flow;
+- work item completion only after configured success criteria are verified.
+
+### Exit criteria
+
+Both paths pass:
+
+**Rejection**
+
+- owner rejects;
+- no contractor is confirmed;
+- state/event feed clearly shows blocked/re-source state.
+
+**Approval**
+
+- owner approves;
+- correct Contractor is confirmed;
+- Tenant is updated;
+- Contractor completion alone does not close work;
+- Tenant verification closes work.
+
+### Dependency
+
+A2.
+
+---
+
+## A4 — Workforce Evolution & Runtime Hardening
+
+### Objective
+
+Complete the Army thesis: persistent useful workers evolve from temporary to permanent while runtime behavior remains reliable.
+
+### Deliverables
+
+- performance/success counters update on verified completion;
+- seeded prior Operations history;
+- deterministic promotion eligibility rule;
+- Alex promotion recommendation;
+- owner promotion approval;
+- worker employment/rank/title persistence update;
+- runtime retry/idempotency checks;
+- runtime happy-path and rejection-path tests.
+
+### Exit criteria
+
+- live verified job can trigger promotion eligibility;
+- owner approval persists the promotion;
+- promoted worker remains the same persistent identity;
+- the full demo workflow can execute correctly even if the command-centre UI is closed.
+
+### Dependency
+
+A3.
+
+---
+
+# 12. Lane B milestones — Live Command Centre & Demo Theatre
+
+Lane B owns the visual system, realtime org chart, work views, event feed, participant lobby, scenario response board, status visuals, promotion sequence, presentation mode, and UI verification.
+
+Lane B does **not** own agent prompts, runtime/provider SDKs, Twilio workflow processing, business-rule evaluation, approval enforcement, or permission enforcement.
+
+## B1 — Visual Foundation & Generic Workforce Views
+
+### Objective
+
+Create the aesthetic system and prove that generic workforce state can render beautifully without runtime-specific knowledge.
+
+### Deliverables
+
+- visual design tokens/theme;
+- reusable worker card;
+- React Flow org chart driven entirely by Convex worker state;
+- rank/employment/status treatment;
+- generic work-item panel;
+- generic AI Operations Feed from shared events;
+- dynamic worker creation renders without code changes.
+
+### Exit criteria
+
+- Alex plus any dynamically inserted worker renders correctly;
+- reporting lines render from data;
+- worker status changes update in realtime;
+- maintenance and marketing S4 test data both render with the same generic components;
+- UI does not import runtime/provider objects.
+
+### Dependency
+
+S4.
+
+---
+
+## B2 — Live Participation & Scenario Surfaces
+
+### Objective
+
+Turn the command centre into a live audience-participation surface without making the UI authoritative for workflow logic.
+
+### Deliverables
+
+- presentation-mode participant lobby;
+- WhatsApp join QR/instructions;
+- Business Owner ready state;
+- Tenant `0/1 -> 1/1`;
+- Contractors `0/3 -> 3/3`;
+- `DEMO CREW READY` state;
+- scenario option/quote board rendering persisted response state;
+- no phone numbers displayed publicly.
+
+### Exit criteria
+
+- required roles update live as participants join;
+- extra participants do not break the minimum-role flow;
+- 3 Contractor responses appear as distinct live cards;
+- option viability/selected state reflects backend persisted evaluation rather than frontend-calculated business rules.
+
+### Dependency
+
+B1.
+
+---
+
+## B3 — Workflow Theatre & Explainability
+
+### Objective
+
+Make the agentic process legible and exciting while preserving trustworthy structured telemetry.
+
+### Deliverables
+
+- polished worker states: `idle`, `thinking`, `using_tool`, `waiting_human`, `delegating`, `blocked`, `complete`;
+- event-driven status animation;
+- visually clear capability gaps and worker spawning;
+- human-wait states;
 - approval-state visibility;
-- worker status visuals;
-- animations;
-- promotion payoff;
-- presentation mode;
-- UI/visual tests.
+- selected option/recommendation explanation;
+- work progress/timeline treatment;
+- no raw chain-of-thought.
 
-### Does not own
+### Exit criteria
 
-- agent prompts;
-- OpenAI/OpenRouter runtime code;
-- Twilio workflow processing;
-- business-rule evaluation;
-- approval enforcement;
-- worker permission enforcement;
-- outcome-verification logic.
+An observer can answer, without verbal explanation:
 
-### B1. Visual system
+- what work entered the system;
+- which capability was missing;
+- which worker was created/reused;
+- what the worker is doing now;
+- what external human the system is waiting for;
+- whether owner approval is pending/approved/rejected;
+- why the selected option won.
 
-Required direction:
+### Dependency
 
-- dark charcoal base;
-- warm off-white typography;
-- restrained olive accents;
-- brass/gold rank treatment;
-- high-information but uncluttered cards;
-- subtle strategy/military cues rather than literal military cosplay.
+B2.
+
+---
+
+## B4 — Promotion Payoff & Presentation Polish
+
+### Objective
+
+Deliver the visual climax and make the end-to-end demo feel intentional rather than hacked together.
+
+### Deliverables
+
+- promotion animation;
+- rank/title/employment transition;
+- org-chart transition after promotion;
+- restrained confetti/celebration;
+- workforce summary metrics;
+- presentation mode sized for projector/screen;
+- reset-ready visual state;
+- final responsive/layout polish.
 
 Rank concept:
 
@@ -1019,197 +938,141 @@ Rank concept:
 
 Only Intern, Permanent Employee, and Manager are required for the hackathon.
 
-### B2. Generic realtime org chart
+### Exit criteria
 
-Use React Flow.
+- backend promotion state automatically triggers the visual transition;
+- refresh preserves promoted state;
+- the command centre can render valid workforce/work/event state without knowing which model/runtime created it;
+- the entire presentation can be run fullscreen without developer-only controls becoming distracting.
 
-Render from Convex worker state rather than hardcoded nodes.
+### Dependency
 
-Required:
-
-- reporting relationships;
-- dynamic worker spawn;
-- rank/employment type;
-- current status;
-- realtime updates;
-- arbitrary new worker rendering without code changes.
-
-### B3. AI Operations Feed
-
-Render structured events generically.
-
-Example:
-
-```text
-10:42:03  ALEX
-New work received.
-
-10:42:05  ALEX
-Required capability: maintenance triage.
-No suitable worker found.
-
-10:42:06  ALEX
-Created Operations Intern: Shu Zhen.
-
-10:42:27  SHU ZHEN
-Additional capability required: vendor sourcing.
-```
-
-Do not render raw chain-of-thought.
-
-### B4. Generic work-item panel
-
-Show:
-
-- objective;
-- status;
-- constraints;
-- required capabilities;
-- assigned workers;
-- current dependency;
-- success criteria;
-- completion state.
-
-Property-specific data can appear in a scenario-specific subpanel.
-
-### B5. Participant lobby
-
-Presentation-mode join screen:
-
-- WhatsApp QR / join instructions;
-- Business Owner ready state;
-- Tenant `0/1 -> 1/1`;
-- Contractors `0/3 -> 3/3`;
-- `DEMO CREW READY` when minimum participants exist.
-
-Never display real phone numbers.
-
-### B6. Scenario option/quote board
-
-Render the three live contractor responses with:
-
-- anonymous/callsign identity;
-- price;
-- availability;
-- viability state;
-- selected/winner state.
-
-The UI renders persisted evaluation output; it does not make the business decision.
-
-### B7. Promotion payoff
-
-On promotion:
-
-- transition rank insignia;
-- update title;
-- update employment type;
-- animate org-chart state;
-- update career/history metrics;
-- use restrained celebration/confetti.
-
-### Lane B completion gate
-
-Lane B is complete when any valid worker/work-item/event data conforming to the shared contracts renders correctly **without knowing which model/runtime created it**.
+B3.
 
 ---
 
-# 14. Reintegration checkpoints — BOTH LANES STOP AND TEST
+# 13. Integration milestones — both lanes stop and test
 
-The lanes must not disappear until final integration. Both lanes reintegrate at these checkpoints.
+These are mandatory. Neither lane should disappear until final merge.
 
-## Checkpoint 1 — Generic workforce creation
+## I1 — Generic Workforce Integration
 
-Lane A evidence:
+### Inputs
 
-- arbitrary WhatsApp request -> `workItem`;
-- capabilities inferred;
-- workforce checked;
-- missing capability -> worker created;
-- assignment + events persisted.
+- A1 complete enough to create/delegate workers through the runtime;
+- B1 complete enough to render generic workforce/work/event state.
 
-Lane B evidence:
+### Required proof
 
-- worker appears from Convex state;
-- work item is visible;
-- operations feed renders generic events.
+- WhatsApp maintenance request -> generic work item -> capability analysis -> worker creation/reuse;
+- worker appears live in org chart;
+- work item appears live;
+- structured events render;
+- marketing request follows the same orchestration path and renders with the same UI.
 
-Required test:
+### Exit criteria
 
-- property-maintenance request;
-- marketing request;
-- same orchestration path.
-
-Commit a working checkpoint before continuing.
-
-## Checkpoint 2 — External execution + human authority
-
-Lane A evidence:
-
-- scenario adapter contacts 3 Contractors;
-- natural replies become structured options;
-- deterministic evaluation works;
-- owner approval requested and enforced;
-- rejection prevents external commitment.
-
-Lane B evidence:
-
-- response/quote board updates live;
-- worker statuses update;
-- approval state is visible;
-- selected option is explainable.
-
-Run both:
-
-- rejection path;
-- successful approval path.
-
-Commit a working checkpoint before continuing.
-
-## Checkpoint 3 — Verified outcome + workforce evolution
-
-Lane A evidence:
-
-- Contractor reports completion;
-- Tenant verifies outcome;
-- work item closes;
-- performance counters update;
-- promotion recommendation and approval persist.
-
-Lane B evidence:
-
-- case visibly closes;
-- promotion animation works;
-- org chart reflects permanent worker state.
-
-After this checkpoint, **freeze feature scope**.
-
-Remaining time goes to reliability, visual polish, README/submission materials, and rehearsal.
+Both genericity requests pass end to end on merged code.
 
 ---
 
-## 15. Reliability and security invariants
+## I2 — Live Human Execution Integration
+
+### Inputs
+
+- A2 external-human execution;
+- B2 participant/option surfaces.
+
+### Required proof
+
+- audience roles join;
+- Tenant starts the live maintenance work;
+- Ops worker is created/reused;
+- Procurement worker is created after a capability gap;
+- 3 real Contractors receive requests;
+- natural replies appear live as structured options;
+- recommendation is persisted and visibly understandable.
+
+### Exit criteria
+
+The system completes the flow up to the owner approval boundary using real WhatsApp participants.
+
+---
+
+## I3 — Human Control, Verified Outcome & Promotion
+
+### Inputs
+
+- A3/A4 approval, verification, promotion behavior;
+- B3/B4 authority/status/promotion theatre.
+
+### Required proof
+
+Run both paths:
+
+1. **Reject** a recommendation and verify no external commitment occurs.
+2. Reset and run **Approve**.
+3. Winning Contractor receives confirmation.
+4. Contractor reports completion.
+5. Tenant verifies success.
+6. Work closes.
+7. Promotion becomes eligible.
+8. Owner approves promotion.
+9. Command centre shows permanent worker transition.
+
+### Exit criteria
+
+The full judged workflow works live, including a relevant denied action/failure-control path.
+
+---
+
+## I4 — Demo Freeze / Submission Ready
+
+### Objective
+
+Stop feature development and turn the working system into a reliable hackathon submission.
+
+### Required work
+
+- run the entire demo repeatedly on real phones;
+- verify webhook idempotency;
+- verify reset flow;
+- verify no phone numbers/secrets are exposed publicly;
+- verify UI survives refresh;
+- verify rejection + approval paths;
+- verify marketing genericity smoke test;
+- remove obvious debug clutter;
+- update README with architecture, genericity explanation, setup, demo flow, and inherited-vs-built-during-event distinction;
+- prepare public repo/submission requirements;
+- rehearse the live audience-participation sequence;
+- capture backup demo video.
+
+### Exit criteria
+
+- one clean live run can be repeated reliably;
+- one backup recorded run exists;
+- repository clearly shows generic kernel vs scenario adapter;
+- feature scope is frozen;
+- remaining work is only presentation/submission/rehearsal.
+
+---
+
+## 14. Reliability and security invariants
 
 ### Participant privacy
 
-The join screen must state that the interaction is a hackathon simulation and no real service/payment is being requested.
-
-Never publicly display participant phone numbers.
-
-Provide a demo reset/delete operation for temporary participant mappings and scenario response data.
+- state clearly that the interaction is a hackathon simulation;
+- no real service/payment is being requested;
+- never display participant phone numbers publicly;
+- provide a demo reset/delete operation for temporary participant mappings and scenario response data.
 
 ### Twilio idempotency
 
-Persist/process Twilio message identifiers so duplicate delivery cannot:
-
-- create duplicate work items;
-- create duplicate workers;
-- create duplicate responses;
-- execute duplicate approvals;
-- send duplicate confirmations.
+Persist/process Twilio message identifiers so duplicate delivery cannot create duplicate work items, workers, responses, approvals, or confirmations.
 
 ### Approval invariant
 
-No authority-requiring external action may execute before the corresponding approval record is `approved`.
+No authority-requiring external action may execute before the corresponding approval is `approved`.
 
 ### Outcome-verification invariant
 
@@ -1229,54 +1092,30 @@ Provider/model choice must not define worker identity or organisational state.
 
 ---
 
-## 16. Required tests
+## 15. Required tests
 
-Prioritise deterministic/high-risk behavior.
+Prioritise high-risk deterministic behavior.
 
-### Automated tests
+Automated tests should cover at minimum:
 
-At minimum:
+- arbitrary request -> generic `workItem`;
+- capability output -> workforce matching;
+- existing worker reuse;
+- missing capability -> generic worker creation;
+- maintenance + marketing genericity test;
+- permission mapping;
+- structured responder extraction;
+- property scenario evaluation;
+- rejection preventing external confirmation;
+- Twilio webhook idempotency;
+- outcome verification requirement;
+- promotion threshold.
 
-- arbitrary request becomes generic `workItem`;
-- capability output maps to workforce matching;
-- existing suitable worker is reused;
-- missing capability creates a worker without scenario-specific branching;
-- maintenance and marketing requests pass the genericity acceptance test;
-- permission mapping prevents unauthorised tools;
-- structured response parser extracts demo fields;
-- property evaluation rejects late options and applies budget rules;
-- approval rejection prevents external confirmation;
-- duplicate Twilio webhook does not duplicate state/actions;
-- work cannot close before outcome verification;
-- promotion threshold triggers only after required success count.
-
-### Manual end-to-end checks
-
-Before presentation:
-
-1. join required participants;
-2. run genericity smoke tests;
-3. run maintenance request;
-4. verify dynamic worker creation;
-5. Tenant receives message;
-6. 3 Contractors receive requests;
-7. all 3 reply differently;
-8. responses populate command centre;
-9. owner receives approval request;
-10. run rejection and confirm no contractor is booked;
-11. reset;
-12. run approval happy path;
-13. selected Contractor receives confirmation;
-14. Tenant receives update;
-15. Contractor reports completion;
-16. Tenant verifies success;
-17. promotion executes;
-18. UI survives refresh;
-19. verify no secrets/phone numbers appear publicly.
+Manual pre-demo test should run the complete participant flow on real phones, including one rejection run and one approval/completion/promotion run.
 
 ---
 
-## 17. Scope exclusions
+## 16. Scope exclusions
 
 Do not implement before the core demo is stable:
 
@@ -1300,7 +1139,7 @@ Do not implement before the core demo is stable:
 
 ---
 
-## 18. Stretch goals — only after Checkpoint 3
+## 17. Stretch goals — only after I4 core readiness
 
 Priority order:
 
@@ -1315,32 +1154,31 @@ Do not trade core reliability for stretch goals.
 
 ---
 
-## 19. Demo presentation flow
+## 18. Demo presentation flow
 
 1. Explain the SME problem: owners become the operating system for recurring WhatsApp work.
 2. Show initial company with only Alex.
 3. State the thesis: the owner gives work; the organisation forms around it.
 4. Audience participants join live roles.
 5. Tenant sends an unscripted issue.
-6. Show generic `workItem` + capability analysis.
-7. Alex identifies capability gap and creates Operations Intern.
-8. Worker interacts with real Tenant.
+6. Show generic work item + capability analysis.
+7. Alex identifies a capability gap and creates an Operations Intern.
+8. Worker interacts with the real Tenant.
 9. Worker identifies another capability gap.
-10. Alex creates Procurement Intern.
-11. Procurement worker contacts 3 real Contractor participants.
+10. Alex creates a Procurement Intern.
+11. Procurement worker contacts 3 real Contractors.
 12. Unscripted responses appear live.
 13. System evaluates viable options.
 14. Owner approval is requested.
-15. Demonstrate explicit human control.
-16. Real humans receive resulting messages.
-17. Contractor reports completion.
-18. Tenant verifies outcome.
-19. Worker is promoted after repeated successful use.
-20. Close on the architecture thesis: the same engine staffs different work because the core operates on work items, capabilities, workers, tools, approvals, and outcomes — not plumbing-specific code.
+15. Real humans receive resulting messages.
+16. Contractor reports completion.
+17. Tenant verifies outcome.
+18. Worker is promoted after repeated successful use.
+19. Close on the architecture thesis: the same engine staffs different work because the core operates on work items, capabilities, workers, tools, approvals, and outcomes — not plumbing-specific code.
 
 ---
 
-## 20. Definition of done
+## 19. Definition of done
 
 The hackathon MVP is done when one clean live run proves:
 
@@ -1348,10 +1186,10 @@ The hackathon MVP is done when one clean live run proves:
 
 The repository must also pass the genericity check:
 
-> Changing the incoming request from a property-maintenance problem to a materially different task such as marketing produces different capabilities / WorkerSpecs without changing orchestration code.
+> Changing the incoming request from property maintenance to a materially different task such as marketing produces different capabilities / WorkerSpecs without changing orchestration code.
 
 And the architecture must pass the lane-independence check:
 
 > Runtime execution can complete correctly without the command-centre UI, and the command centre can render valid workforce/work/event state without importing runtime/provider internals.
 
-Once these conditions pass reliably, stop adding backend capability and spend remaining time on visual polish, README/submission materials, demo rehearsal, and failure-proofing.
+Once these conditions pass reliably, stop adding backend capability and spend remaining time on visual polish, submission materials, demo rehearsal, and failure-proofing.
