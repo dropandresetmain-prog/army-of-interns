@@ -10,6 +10,10 @@ if (!deploymentUrl) {
 }
 
 const client = new ConvexHttpClient(deploymentUrl);
+const adminSecret = process.env.DEMO_ADMIN_SECRET;
+if (!adminSecret) {
+  throw new Error("DEMO_ADMIN_SECRET is required. Set it in .env.local and Convex env.");
+}
 const bootstrapDemo = makeFunctionReference("seed:bootstrapDemo");
 const getCompany = makeFunctionReference("companyProfiles:get");
 const listWorkers = makeFunctionReference("workers:list");
@@ -17,7 +21,7 @@ const listWorkItems = makeFunctionReference("workItems:list");
 const createEvent = makeFunctionReference("events:create");
 const listEvents = makeFunctionReference("events:list");
 
-await client.mutation(bootstrapDemo, {});
+await client.mutation(bootstrapDemo, { adminSecret });
 
 const company = await client.query(getCompany, {});
 const workers = await client.query(listWorkers, {});
@@ -47,7 +51,7 @@ assert.equal(persistedEvent?.summary, eventSummary);
 assert.equal(persistedEvent?.eventType, "work_received");
 assert.deepEqual(persistedEvent?.metadata, { source: "s1_verification" });
 
-const secondBootstrap = await client.mutation(bootstrapDemo, {});
+const secondBootstrap = await client.mutation(bootstrapDemo, { adminSecret });
 assert.equal(secondBootstrap.createdCompany, false);
 assert.equal(secondBootstrap.createdOwner, false);
 assert.equal(secondBootstrap.createdManager, false);

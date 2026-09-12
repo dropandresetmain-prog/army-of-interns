@@ -14,6 +14,10 @@ if (!siteUrl) {
 }
 
 const client = new ConvexHttpClient(deploymentUrl);
+const adminSecret = process.env.DEMO_ADMIN_SECRET;
+if (!adminSecret) {
+  throw new Error("DEMO_ADMIN_SECRET is required. Set it in .env.local and Convex env.");
+}
 const bootstrapDemo = makeFunctionReference("seed:bootstrapDemo");
 const listMessages = makeFunctionReference("messaging:listRecent");
 const listEvents = makeFunctionReference("events:list");
@@ -22,7 +26,7 @@ const simulateInbound = makeFunctionReference("messaging:simulateInbound");
 const insertRealtimeProbe = makeFunctionReference("messaging:insertRealtimeProbe");
 const createRealtimeProbe = makeFunctionReference("workers:createRealtimeProbe");
 
-await client.mutation(bootstrapDemo, {});
+await client.mutation(bootstrapDemo, { adminSecret });
 
 const sid = `SM_S2_VERIFY_${Date.now()}`;
 const participant = `+1555${String(Date.now()).slice(-7)}`;

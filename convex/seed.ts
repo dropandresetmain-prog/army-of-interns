@@ -4,7 +4,8 @@ import { CONTROLLED_CAPABILITIES } from "../src/core/workforce/capabilityCatalog
 import { DEMO_MANAGER, DEMO_OPS_WORKER } from "../src/scenarios/propertyMaintenance";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
+import { assertDemoAdminSecret } from "./lib/demoAdmin";
 
 const DEMO_COMPANY_NAME = "Army of Interns Demo";
 const DEMO_OWNER_CALLSIGN = "OWNER";
@@ -144,18 +145,32 @@ export async function persistBootstrapDemo(ctx: MutationCtx) {
     };
 }
 
-export const bootstrapDemo = mutation({
+const bootstrapDemoReturns = v.object({
+  companyId: v.id("companyProfiles"),
+  ownerPersonId: v.id("people"),
+  managerWorkerId: v.id("workers"),
+  createdCompany: v.boolean(),
+  createdOwner: v.boolean(),
+  createdManager: v.boolean(),
+  capabilityCount: v.number(),
+});
+
+/** Trusted backend bootstrap (prove actions, schedulers). */
+export const bootstrapDemoInternal = internalMutation({
   args: {},
-  returns: v.object({
-    companyId: v.id("companyProfiles"),
-    ownerPersonId: v.id("people"),
-    managerWorkerId: v.id("workers"),
-    createdCompany: v.boolean(),
-    createdOwner: v.boolean(),
-    createdManager: v.boolean(),
-    capabilityCount: v.number(),
-  }),
+  returns: bootstrapDemoReturns,
   handler: persistBootstrapDemo,
+});
+
+export const bootstrapDemo = mutation({
+  args: {
+    adminSecret: v.string(),
+  },
+  returns: bootstrapDemoReturns,
+  handler: async (ctx, args) => {
+    assertDemoAdminSecret(args.adminSecret);
+    return persistBootstrapDemo(ctx);
+  },
 });
 
 /**
@@ -186,6 +201,10 @@ export async function resetTransientDemoRecords(ctx: MutationCtx) {
     for (const worker of workers) {
       if (worker.name === DEMO_MANAGER_NAME) {
         await ctx.db.patch(worker._id, {
+          name: DEMO_MANAGER_NAME,
+          title: "General Manager",
+          employmentType: "permanent",
+          rank: "manager",
           status: "idle",
           tasksCompleted: 0,
           successfulTasks: 0,
@@ -230,10 +249,15 @@ export async function resetTransientDemoRecords(ctx: MutationCtx) {
       deletedApprovals += 1;
     }
 
-    const events = await ctx.db.query("events").take(500);
-    for (const event of events) {
-      await ctx.db.delete(event._id);
-      deletedEvents += 1;
+    for (;;) {
+      const events = await ctx.db.query("events").take(100);
+      if (events.length === 0) {
+        break;
+      }
+      for (const event of events) {
+        await ctx.db.delete(event._id);
+        deletedEvents += 1;
+      }
     }
 
     return {
@@ -246,7 +270,9 @@ export async function resetTransientDemoRecords(ctx: MutationCtx) {
 }
 
 export const resetTransientDemoState = mutation({
-  args: {},
+  args: {
+    adminSecret: v.string(),
+  },
   returns: v.object({
     deletedWorkers: v.number(),
     deletedWorkItems: v.number(),
@@ -254,7 +280,8 @@ export const resetTransientDemoState = mutation({
     deletedApprovals: v.number(),
     deletedEvents: v.number(),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    assertDemoAdminSecret(args.adminSecret);
     const result = await resetTransientDemoRecords(ctx);
     await persistBootstrapDemo(ctx);
     return result;

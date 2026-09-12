@@ -53,10 +53,15 @@ A second request for an existing capability set reuses the persisted worker.
 
 ## Shared public Convex boundary
 
+Destructive demo helpers require `adminSecret` matching Convex env
+`DEMO_ADMIN_SECRET` (fail closed if unset). Backend prove-actions call
+`seed:bootstrapDemoInternal` instead.
+
 | Function | Kind | Purpose |
 | --- | --- | --- |
-| `seed:bootstrapDemo` | mutation | Idempotently persist demo owner, company, Alex, capabilities |
-| `seed:resetTransientDemoState` | mutation | Clear transient workers/work/assignments/approvals/events; keep Alex + seed |
+| `seed:bootstrapDemo` | mutation | Idempotently persist demo owner, company, Alex, capabilities (`adminSecret`) |
+| `seed:resetTransientDemoState` | mutation | Clear transient workers/work/assignments/approvals/events; keep Alex + seed (`adminSecret`) |
+| `demoRuntime:resetDemo` | mutation | Full live-demo reset including non-owner people (`adminSecret`) |
 | `companyProfiles:get` | query | Read the company profile |
 | `workers:list` | query | Read up to 100 workers |
 | `workers:createRealtimeProbe` | mutation | S2 realtime worker insert |
@@ -74,7 +79,7 @@ A second request for an existing capability set reuses the persisted worker.
 | `POST /twilio/whatsapp` | HTTP action | Twilio inbound webhook |
 | `POST /telegram/webhook` | HTTP action | Telegram inbound webhook (live hackathon transport) |
 
-These functions are intentionally unauthenticated for local development. Do not
+Other list/read helpers remain intentionally open for local development. Do not
 expose a deployment with real participant data publicly without auth.
 
 ## Verification

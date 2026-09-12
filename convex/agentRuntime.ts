@@ -620,7 +620,7 @@ export const proveDelegation = action({
     eventSummaries: string[];
     eventTypes: string[];
   }> => {
-    await ctx.runMutation(api.seed.bootstrapDemo, {});
+    await ctx.runMutation(internal.seed.bootstrapDemoInternal, {});
     const tenant: { personId: Id<"people"> } = await ctx.runMutation(
       internal.agentState.ensureDemoTenant,
       {},
@@ -678,7 +678,7 @@ export const proveThreeAgent = action({
     eventTypes: string[];
     outboundCount: number;
   }> => {
-    await ctx.runMutation(api.seed.bootstrapDemo, {});
+    await ctx.runMutation(internal.seed.bootstrapDemoInternal, {});
     const tenant = await ctx.runMutation(internal.agentState.ensureDemoTenant, {});
     await ctx.runMutation(internal.agentState.resetProofState, {});
     const first = await runInboundAgents(ctx, {

@@ -18,6 +18,7 @@ import type * as demoActions from "../demoActions.js";
 import type * as demoRuntime from "../demoRuntime.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
+import type * as lib_demoAdmin from "../lib/demoAdmin.js";
 import type * as messaging from "../messaging.js";
 import type * as messagingOutbound from "../messagingOutbound.js";
 import type * as model_validators from "../model/validators.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   demoRuntime: typeof demoRuntime;
   events: typeof events;
   http: typeof http;
+  "lib/demoAdmin": typeof lib_demoAdmin;
   messaging: typeof messaging;
   messagingOutbound: typeof messagingOutbound;
   "model/validators": typeof model_validators;

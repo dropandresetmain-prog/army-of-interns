@@ -46,7 +46,10 @@ export function LiveCommandCentre() {
             onClick={() =>
               startTransition(async () => {
                 try {
-                  await resetDemo({});
+                  await resetDemo({
+                    adminSecret:
+                      process.env.NEXT_PUBLIC_DEMO_ADMIN_SECRET ?? "",
+                  });
                   setResetNote("Demo reset");
                 } catch (error) {
                   setResetNote(

@@ -35,6 +35,7 @@ import {
   canVerifyOutcome,
 } from "../src/agents/authority";
 import { persistIntakeAndStaff, persistStaffCapabilities } from "./workforce";
+import { assertDemoAdminSecret } from "./lib/demoAdmin";
 import { persistBootstrapDemo, resetTransientDemoRecords } from "./seed";
 
 const personPublicValidator = v.object({
@@ -1187,25 +1188,60 @@ async function handlePromote(
 }
 
 export const resetDemo = mutation({
-  args: {},
+  args: {
+    adminSecret: v.string(),
+  },
   returns: v.object({
     ok: v.boolean(),
   }),
-  handler: async (ctx) => {
-    const quotes = await ctx.db.query("contractorQuotes").take(200);
-    for (const quote of quotes) {
-      await ctx.db.delete(quote._id);
+  handler: async (ctx, args) => {
+    assertDemoAdminSecret(args.adminSecret);
+
+    for (;;) {
+      const quotes = await ctx.db.query("contractorQuotes").take(100);
+      if (quotes.length === 0) {
+        break;
+      }
+      for (const quote of quotes) {
+        await ctx.db.delete(quote._id);
+      }
+    }
+    for (;;) {
+      const messages = await ctx.db.query("messages").take(100);
+      if (messages.length === 0) {
+        break;
+      }
+      for (const message of messages) {
+        await ctx.db.delete(message._id);
+      }
     }
     const states = await ctx.db.query("demoState").take(20);
     for (const state of states) {
       await ctx.db.delete(state._id);
     }
-    const messages = await ctx.db.query("messages").take(500);
-    for (const message of messages) {
-      await ctx.db.delete(message._id);
-    }
 
     await resetTransientDemoRecords(ctx);
+
+    // Owner Tim stays registered. Tenant and contractor joins must drop so
+    // the command-centre crew counts return to 0/1 and 0/3.
+    for (;;) {
+      const people = await ctx.db.query("people").take(100);
+      let deleted = 0;
+      for (const person of people) {
+        const isOwner =
+          person.roleType === DEMO_OWNER.roleType ||
+          person.demoCallsign === DEMO_OWNER.demoCallsign;
+        if (isOwner) {
+          continue;
+        }
+        await ctx.db.delete(person._id);
+        deleted += 1;
+      }
+      if (deleted === 0) {
+        break;
+      }
+    }
+
     await persistBootstrapDemo(ctx);
     await getOrCreateDemoState(ctx);
     return { ok: true };
