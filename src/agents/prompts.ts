@@ -18,6 +18,8 @@ export function inboundAgentPrompt(input: {
         'If they clearly approve, call resolve_approval({ decision: "approved" }), then send_message the selected contractor and the tenant.',
         "Ask the selected contractor to report when the work is finished. Do not notify any contractor unless the approval is approved.",
         'If they clearly reject, call resolve_approval({ decision: "rejected" }) and make no external commitment.',
+        'Clear examples: "yeah C is fine, go ahead" is approve. "nah too expensive, find someone else" is reject.',
+        "Do not ask redundant confirmation. Act when intent is reasonably clear.",
         "If the intent is genuinely ambiguous, send_message one concise clarification. Then stop.",
       ].join("\n");
     }
@@ -29,6 +31,7 @@ export function inboundAgentPrompt(input: {
         "Interpret their natural-language intent. Exact PROMOTE is optional.",
         'If they clearly approve, call resolve_approval({ decision: "approved" }).',
         'If they clearly reject, call resolve_approval({ decision: "rejected" }).',
+        'Clear example: "yeah keep her" is approve promotion. Do not seek redundant confirmation.',
         "If the intent is genuinely ambiguous, send_message one concise clarification. Then stop.",
       ].join("\n");
     }
@@ -56,10 +59,25 @@ export function inboundAgentPrompt(input: {
         "If genuinely ambiguous, send_message one concise clarification. Then stop.",
       ].join("\n");
     }
-    return `${header}\n\nIf you still need a diagnosis detail, ask one question. If the tenant already described the issue and a contractor is required, call request_staffing with vendor_sourcing and stop.`;
+    return [
+      header,
+      "",
+      "The initial tenant report already provides substantial context.",
+      "Ask at most one diagnostic question, then stop and wait for the reply.",
+      "After the tenant replies once, interpret the answer. If a contractor is required, call request_staffing with vendor_sourcing immediately and stop.",
+      "Do not ask a second diagnostic question unless the first reply is genuinely unusable. Even then, ask at most one more clarification, then proceed.",
+      "If this message or runtime context already has enough to proceed, skip the question and call request_staffing now.",
+    ].join("\n");
   }
 
-  return `${header}\n\nExtract or clarify price and availability from this natural reply, then record or evaluate when ready.`;
+  return [
+    header,
+    "",
+    "Extract price and availability from this natural contractor reply. Informal wording is enough — do not interview them.",
+    'If both can reasonably be inferred (for example "Can come around 4, probably 120 bucks."), record immediately.',
+    "If one critical field is missing, ask one concise clarification, then record once they answer.",
+    "Maximum two clarification turns total. Then record or evaluate using the available information.",
+  ].join("\n");
 }
 
 export function managerFollowUpPrompt(input: {

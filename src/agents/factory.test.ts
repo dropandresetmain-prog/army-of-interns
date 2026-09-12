@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentBridge } from "./bridge";
 import { activityForTool } from "./events";
-import { createManagerAgent, createWorkerAgent, toolNamesOf } from "./factory";
+import { createManagerAgent, createWorkerAgent, instructionsForWorker, toolNamesOf } from "./factory";
 import { expectedToolNamesForWorker, toolNamesForPermissions } from "./permissions";
 import { selectAgentKind } from "./routing";
 import {
@@ -163,6 +163,23 @@ describe("agent factory permission envelopes", () => {
     }
     expect(names).not.toContain("verify_outcome");
     expect(names).not.toContain("staff_work");
+  });
+});
+
+describe("shared worker instructions", () => {
+  it("caps clarification turns and prefers action over conversation", () => {
+    const text = instructionsForWorker(shuZhen, emptySnapshot);
+    expect(text).toMatch(/Default to action over conversation/);
+    expect(text).toMatch(/at most two clarification turns/);
+    expect(text).toMatch(/1-2 sentences/);
+    expect(text).toMatch(/use tools immediately/);
+  });
+
+  it("tells Alex not to seek redundant confirmation", () => {
+    const text = instructionsForWorker(alex, emptySnapshot);
+    expect(text).toMatch(/least chatty/);
+    expect(text).toMatch(/Just to confirm/);
+    expect(text).toMatch(/reasonably clear, act immediately/);
   });
 });
 

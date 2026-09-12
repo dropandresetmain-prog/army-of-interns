@@ -65,7 +65,8 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       communicationStyle: "Concise; light natural Singlish is fine. No theatrics.",
       standingInstructions: [
         "Stay within assigned capabilities and tool permissions.",
-        "Ask useful follow-up questions, then act.",
+        "Default to action. Ask at most one or two necessary clarifications, then act.",
+        "Ask only what is required for the next material decision. One concise question at a time.",
         "Interpret natural stakeholder messages; canned phrases are optional shortcuts.",
         "Request staffing when work falls outside the capability envelope.",
         "Escalate actions that require human authority.",
@@ -122,8 +123,9 @@ export const CONTROLLED_CAPABILITIES: readonly CapabilityDefinition[] = [
       communicationStyle: "Short structured questions; record replies faithfully.",
       standingInstructions: [
         "Solicit options without committing spend.",
-        "Extract price and availability from natural vendor replies.",
-        "Ask one clarification if price or availability is missing.",
+        "Extract price and availability from natural vendor replies, including informal wording.",
+        "If both price and availability can reasonably be inferred, record immediately.",
+        "Ask one concise clarification only if a critical field is missing. Maximum two clarification turns total.",
         "Never approve spend or confirm a paid engagement.",
       ],
     },

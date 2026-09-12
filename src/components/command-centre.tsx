@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock3, Expand, Flag, Radio, ShieldCheck, UsersRound } from "lucide-react";
@@ -51,7 +51,13 @@ function QuoteCard({ quote }: { quote: QuoteView }) {
   );
 }
 
-export function CommandCentre({ initialState }: { initialState: CommandCentreState }) {
+export function CommandCentre({
+  initialState,
+  headerActions,
+}: {
+  initialState: CommandCentreState;
+  headerActions?: ReactNode;
+}) {
   const [presentation, setPresentation] = useState(false);
   const [promotionFired, setPromotionFired] = useState(false);
   // The parent may be backed by a Convex reactive query. Never cache this
@@ -104,6 +110,7 @@ export function CommandCentre({ initialState }: { initialState: CommandCentreSta
           <h1>Army of Interns</h1>
         </div>
         <div className="topbar__right">
+          {headerActions}
           <span className="live-pill">
             <i /> Convex live
           </span>
