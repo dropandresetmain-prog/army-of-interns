@@ -192,19 +192,57 @@ async function runInboundAgents(
   let agentName = first.agentName;
 
   if (snapshot.pendingManagerFollowUp) {
+    const pendingKeys = snapshot.pendingStaffingCapabilityKeys.join(", ");
     const follow = await runKind(ctx, {
       kind: "manager",
       snapshot,
       provider,
       model,
       prompt:
-        "A worker requested manager follow-up. Inspect workforce and pending staffing or recommendation, then staff, delegate, or request approval as appropriate.",
+        pendingKeys.length > 0
+          ? `Staff the requested capability now: ${pendingKeys}. Call staff_work with those capabilityKeys, then delegate_worker once to the new intern. Then stop.`
+          : "A worker reported a recommendation. Call request_approval once if spend needs authority. Then stop.",
       chatId: input.chatId,
       inboundPersonId: input.personId,
     });
     outboundCount += follow.outboundCount;
     agentName = follow.agentName;
     await ctx.runMutation(internal.agentState.consumeManagerFollowUp, {});
+  }
+
+  snapshot = (await ctx.runQuery(internal.agentState.loadRuntimeContext, {})) as RuntimeSnapshot;
+  if (!findWorker(snapshot, "procurement") && snapshot.pendingStaffingCapabilityKeys.includes("vendor_sourcing")) {
+    const follow = await runKind(ctx, {
+      kind: "manager",
+      snapshot,
+      provider,
+      model,
+      prompt:
+        "vendor_sourcing is still unstaffed. Call staff_work with capabilityKeys [\"vendor_sourcing\"] once, then delegate_worker to Daniel. Then stop.",
+      chatId: input.chatId,
+      inboundPersonId: input.personId,
+    });
+    outboundCount += follow.outboundCount;
+    agentName = follow.agentName;
+    snapshot = (await ctx.runQuery(internal.agentState.loadRuntimeContext, {})) as RuntimeSnapshot;
+  }
+
+  if (findWorker(snapshot, "procurement") && snapshot.phase !== "awaiting_owner_approval") {
+    const procurement = findWorker(snapshot, "procurement");
+    if (procurement && (snapshot.quotes.length === 0 || snapshot.phase === "awaiting_tenant_diagnosis")) {
+      const resumed = await runKind(ctx, {
+        kind: "procurement",
+        snapshot,
+        provider,
+        model,
+        prompt:
+          "You are staffed for vendor sourcing. Contact the available contractors once with a concise price-and-availability ask. Then stop.",
+        chatId: input.chatId,
+        inboundPersonId: input.personId,
+      });
+      outboundCount += resumed.outboundCount;
+      agentName = resumed.agentName;
+    }
   }
 
   snapshot = (await ctx.runQuery(internal.agentState.loadRuntimeContext, {})) as RuntimeSnapshot;
@@ -233,7 +271,7 @@ function buildPrompt(kind: "manager" | "operations" | "procurement", body: strin
     return `Inbound ${roleType ?? "person"} message:\n${body}\n\nDecide the next management action using your tools.`;
   }
   if (kind === "operations") {
-    return `Inbound ${roleType ?? "person"} message:\n${body}\n\nInterpret it and take the next permitted operational action.`;
+    return `Inbound ${roleType ?? "person"} message:\n${body}\n\nIf you still need a diagnosis detail, ask one question. If the tenant already described the leak pattern and a contractor is required, call request_staffing with vendor_sourcing and stop.`;
   }
   return `Inbound contractor message:\n${body}\n\nExtract or clarify price and availability, then record or evaluate when ready.`;
 }
@@ -261,21 +299,33 @@ async function runKind(
 
   const liveSnapshot: RuntimeSnapshot = { ...snapshot, actor: worker };
   const bridge = createBridge(ctx, liveSnapshot, input.chatId, input.inboundPersonId);
-  const subordinates = input.kind === "manager"
-    ? snapshot.workers.filter((item) => item.id !== worker.id)
-    : [];
-  const agent =
-    input.kind === "manager"
-      ? createManagerAgent(worker, bridge, liveSnapshot, subordinates)
-      : createWorkerAgent(worker, bridge, liveSnapshot);
+  const agent = createWorkerAgent(worker, bridge, liveSnapshot);
 
   const runner = new Runner({
     modelProvider: input.provider,
     tracingDisabled: true,
   });
-  await runner.run(agent, input.prompt, {
-    maxTurns: input.kind === "manager" ? MANAGER_MAX_TURNS : WORKER_MAX_TURNS,
-  });
+  try {
+    await runner.run(agent, input.prompt, {
+      maxTurns: input.kind === "manager" ? MANAGER_MAX_TURNS : WORKER_MAX_TURNS,
+    });
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "";
+    if (name !== "MaxTurnsExceededError") {
+      throw error;
+    }
+    console.error(`${worker.name} hit the turn limit; keeping work already done.`);
+    await ctx.runMutation(internal.agentState.emitAgentEvent, {
+      eventType: "tool_called",
+      summary: `${worker.name} hit the turn limit.`,
+      metadata: {
+        agentName: worker.name,
+        toolName: "runner",
+        status: "error",
+        result: "max_turns",
+      },
+    });
+  }
   return { outboundCount: bridge.outboundCount, agentName: worker.name };
 }
 

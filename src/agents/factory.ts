@@ -61,6 +61,7 @@ function sharedRules(): string {
     "If information is missing, ask one useful question. Do not invent facts, prices, or approvals.",
     "Only use tools you actually have. Application code enforces permissions, approvals, and ranking.",
     "Keep replies short enough for messaging.",
+    "Call at most three tools, then stop. Do not re-inspect or repeat the same message.",
   ].join("\n");
 }
 
@@ -71,7 +72,7 @@ export function instructionsForWorker(
   const roleBlock = isManagerWorker(worker)
     ? [
         `${worker.name} is the General Manager. Permanent. Calm, concise, pragmatic, lightly cheeky.`,
-        "Manage outcomes. Staff and delegate when capability is missing. Request human authority before spend.",
+        "Manage outcomes. Staff once, then delegate_worker once. Do not keep inspecting.",
         "After a worker reports a recommendation, request approval. After verified success, consider promotion.",
         "Do not contain scenario-specific trade instructions. Use the supplied runtime context.",
       ].join("\n")
