@@ -11,13 +11,8 @@ function WorkerNode({ data }: NodeProps<Node<{ worker: WorkforceWorker }>>) {
 
 const nodeTypes = { worker: WorkerNode };
 
-function readToken(name: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
-
 export function OrgChart({ workers }: { workers: WorkforceWorker[] }) {
-  const borderColor = readToken("--aoi-bdr", "#E2E7E4");
+  const borderColor = "var(--aoi-bdr)";
   const nodes: Node<{ worker: WorkforceWorker }>[] = workers.map((worker, index) => ({
     id: worker.id, type: "worker", data: { worker },
     position: worker.managerAgentId ? { x: 40 + (index - 1) * 278, y: 190 } : { x: 320, y: 20 },

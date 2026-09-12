@@ -99,7 +99,7 @@ export function CommandCentre({ initialState }: { initialState: CommandCentreSta
       <header className="topbar">
         <div>
           <p className="eyebrow">
-            <Radio size={12} /> Live command centre
+            <Radio size={12} /> Live workspace
           </p>
           <h1>Army of Interns</h1>
         </div>
