@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/convex/schemas/convex.schema.json",
+  "node": {
+    "nodeVersion": "22",
+    "externalPackages": [
+      "@openai/agents",
+      "@openai/agents-core",
+      "@openai/agents-openai",
+      "openai"
+    ]
+  }
+}

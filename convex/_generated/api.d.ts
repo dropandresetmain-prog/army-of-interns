@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as agentSpike from "../agentSpike.js";
 import type * as assignments from "../assignments.js";
 import type * as capabilities from "../capabilities.js";
 import type * as companyProfiles from "../companyProfiles.js";
@@ -31,6 +32,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentSpike: typeof agentSpike;
   assignments: typeof assignments;
   capabilities: typeof capabilities;
   companyProfiles: typeof companyProfiles;

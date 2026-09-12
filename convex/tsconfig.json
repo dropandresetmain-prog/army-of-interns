@@ -25,7 +25,8 @@
     "./**/*",
     "../src/integrations/twilio/**/*",
     "../src/core/domain/**/*",
-    "../src/core/workforce/**/*"
+    "../src/core/workforce/**/*",
+    "../src/agents/**/*"
   ],
   "exclude": ["./_generated"]
 }
