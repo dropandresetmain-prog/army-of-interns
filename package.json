@@ -10,7 +10,9 @@
     "test": "vitest run",
     "verify:convex": "node --env-file=.env.local scripts/verify-convex.mjs",
     "verify:s2": "node --env-file=.env.local scripts/verify-s2.mjs",
-    "verify:s3": "node --env-file=.env.local scripts/verify-s3.mjs"
+    "verify:s3": "node --env-file=.env.local scripts/verify-s3.mjs",
+    "telegram:webhook": "node --env-file=.env.local scripts/configure-telegram-webhook.mjs",
+    "verify:telegram": "node --env-file=.env.local scripts/verify-telegram-live.mjs"
   },
   "dependencies": {
     "convex": "^1.45.0",

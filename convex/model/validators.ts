@@ -103,6 +103,7 @@ const personFields = {
   displayName: v.string(),
   roleType: v.string(),
   whatsappNumber: v.optional(v.string()),
+  telegramChatId: v.optional(v.string()),
   demoCallsign: v.optional(v.string()),
   active: v.boolean(),
   scenarioMetadata: v.optional(metadataValidator),
@@ -113,9 +114,15 @@ export const messageDirectionValidator = v.union(
   v.literal("outbound"),
 );
 
-export const messageChannelValidator = v.literal("whatsapp");
+export const messageChannelValidator = v.union(
+  v.literal("whatsapp"),
+  v.literal("telegram"),
+);
 
-export const messageProviderValidator = v.literal("twilio");
+export const messageProviderValidator = v.union(
+  v.literal("twilio"),
+  v.literal("telegram"),
+);
 
 export const channelMessageStatusValidator = v.union(
   v.literal("received"),

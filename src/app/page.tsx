@@ -17,6 +17,7 @@ export default function Home() {
   const messages = useQuery(api.messaging.listRecent);
   const intakeAndStaff = useMutation(api.workforce.intakeAndStaff);
   const bootstrapDemo = useMutation(api.seed.bootstrapDemo);
+  const resetDemo = useMutation(api.demoRuntime.resetDemo);
   const [status, setStatus] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
@@ -66,6 +67,18 @@ export default function Home() {
           onClick={() => runRequest(MARKETING_REQUEST, "Marketing")}
         >
           Submit marketing request
+        </button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              await resetDemo({});
+              setStatus("Demo reset. Company, Alex, capabilities, and Telegram role mappings kept.");
+            })
+          }
+        >
+          Reset demo
         </button>
         {status ? <p className="status">{status}</p> : null}
       </section>

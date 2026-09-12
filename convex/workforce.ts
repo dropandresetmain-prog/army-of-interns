@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import {
   analyzeRequiredCapabilities,
   createAssignmentDraft,
@@ -91,20 +91,20 @@ async function emitEvent(
   });
 }
 
-/**
- * Generic workforce kernel entrypoint:
- * natural request → work item → capabilities → match/create → assignment → events.
- */
-export const intakeAndStaff = mutation({
-  args: {
-    text: v.string(),
-    requestedByPersonId: v.optional(v.id("people")),
-    context: v.optional(v.string()),
-    constraints: v.optional(v.array(v.string())),
-    successCriteria: v.optional(v.array(v.string())),
-  },
-  returns: staffingResultValidator,
-  handler: async (ctx, args) => {
+type IntakeArgs = {
+  text: string;
+  requestedByPersonId?: Id<"people">;
+  context?: string;
+  constraints?: string[];
+  successCriteria?: string[];
+  workerPresentation?: {
+    name: string;
+    title?: string;
+    seededSuccessfulTasks?: number;
+  };
+};
+
+export async function persistIntakeAndStaff(ctx: MutationCtx, args: IntakeArgs) {
     const capabilityByKey = await ensureControlledCapabilities(ctx);
 
     let requesterId = args.requestedByPersonId;
@@ -235,6 +235,7 @@ export const intakeAndStaff = mutation({
       const spec = createWorkerSpecFromCapabilities({
         requiredCapabilityKeys: analysis.requiredCapabilityKeys,
         managerWorkerId,
+        name: args.workerPresentation?.name,
         reasonForCreation: match.reason,
       });
 
@@ -249,9 +250,10 @@ export const intakeAndStaff = mutation({
       }
 
       // Persist worker identity before any assignment may execute.
+      const seededSuccesses = args.workerPresentation?.seededSuccessfulTasks ?? 0;
       workerId = await ctx.db.insert("workers", {
         name: spec.name,
-        title: spec.title,
+        title: args.workerPresentation?.title ?? spec.title,
         employmentType: spec.employmentType,
         rank: spec.rank,
         managerWorkerId,
@@ -262,8 +264,8 @@ export const intakeAndStaff = mutation({
         communicationStyle: spec.communicationStyle,
         standingInstructions: spec.standingInstructions,
         modelConfig: spec.modelPreference,
-        tasksCompleted: 0,
-        successfulTasks: 0,
+        tasksCompleted: seededSuccesses,
+        successfulTasks: seededSuccesses,
         promotionEligible: false,
       });
       workerCreated = true;
@@ -328,7 +330,29 @@ export const intakeAndStaff = mutation({
       workerCreated,
       eventIds,
     };
+}
+
+/**
+ * Generic workforce kernel entrypoint:
+ * natural request → work item → capabilities → match/create → assignment → events.
+ */
+export const intakeAndStaff = mutation({
+  args: {
+    text: v.string(),
+    requestedByPersonId: v.optional(v.id("people")),
+    context: v.optional(v.string()),
+    constraints: v.optional(v.array(v.string())),
+    successCriteria: v.optional(v.array(v.string())),
+    workerPresentation: v.optional(
+      v.object({
+        name: v.string(),
+        title: v.optional(v.string()),
+        seededSuccessfulTasks: v.optional(v.number()),
+      }),
+    ),
   },
+  returns: staffingResultValidator,
+  handler: persistIntakeAndStaff,
 });
 
 export const getWorkItemDetail = query({
@@ -376,4 +400,172 @@ export const getWorkItemDetail = query({
       workers,
     };
   },
+});
+
+/**
+ * Generic additional staffing on an existing work item (capability missing mid-flight).
+ */
+export async function persistStaffCapabilities(
+  ctx: MutationCtx,
+  args: {
+    workItemId: Id<"workItems">;
+    capabilityKeys: string[];
+    workerPresentation?: { name: string; title?: string };
+  },
+) {
+    const workItem = await ctx.db.get(args.workItemId);
+    if (!workItem) {
+      throw new ConvexError("Work item not found.");
+    }
+
+    const capabilityByKey = await ensureControlledCapabilities(ctx);
+    const requiredCapabilityIds = args.capabilityKeys.map((key) => {
+      const id = capabilityByKey.get(key);
+      if (!id) {
+        throw new ConvexError(`Capability ${key} is not seeded.`);
+      }
+      return id;
+    });
+
+    const mergedCapabilityIds = [
+      ...new Set([...workItem.requiredCapabilityIds, ...requiredCapabilityIds]),
+    ];
+    await ctx.db.patch(args.workItemId, {
+      requiredCapabilityIds: mergedCapabilityIds,
+    });
+
+    const eventIds: Id<"events">[] = [];
+    eventIds.push(
+      await emitEvent(ctx, {
+        workItemId: args.workItemId,
+        eventType: "staffing_requested",
+        summary: `Staffing requested for: ${args.capabilityKeys.join(", ")}`,
+        metadata: { requiredCapabilityKeys: args.capabilityKeys },
+      }),
+    );
+
+    const workers = await ctx.db.query("workers").take(200);
+    const match = matchWorkforce({
+      requiredCapabilityIds,
+      workers: workers.map((worker) => ({
+        id: worker._id,
+        capabilityIds: worker.capabilityIds,
+        status: worker.status,
+      })),
+    });
+
+    let workerId: Id<"workers">;
+    let workerCreated = false;
+    let staffingKind: "reuse" | "create";
+
+    if (match.outcome === "matched") {
+      staffingKind = "reuse";
+      workerId = match.workerId as Id<"workers">;
+      eventIds.push(
+        await emitEvent(ctx, {
+          workItemId: args.workItemId,
+          workerId,
+          eventType: "worker_matched",
+          summary: "Reused an existing worker for the additional capabilities.",
+          metadata: { workerId },
+        }),
+      );
+    } else {
+      staffingKind = "create";
+      const managerWorkerId = await resolveManagerWorkerId(ctx);
+      const spec = createWorkerSpecFromCapabilities({
+        requiredCapabilityKeys: args.capabilityKeys,
+        managerWorkerId,
+        name: args.workerPresentation?.name,
+        reasonForCreation: match.reason,
+      });
+      const permissionCheck = enforcePermissionEnvelope({
+        capabilityKeys: args.capabilityKeys,
+        requestedPermissionIds: spec.toolPermissionIds,
+      });
+      if (permissionCheck.rejectedPermissionIds.length > 0) {
+        throw new ConvexError(
+          `WorkerSpec requested disallowed permissions: ${permissionCheck.rejectedPermissionIds.join(", ")}`,
+        );
+      }
+
+      workerId = await ctx.db.insert("workers", {
+        name: spec.name,
+        title: args.workerPresentation?.title ?? spec.title,
+        employmentType: spec.employmentType,
+        rank: spec.rank,
+        managerWorkerId,
+        status: "idle",
+        capabilityIds: requiredCapabilityIds,
+        toolPermissionIds: permissionCheck.allowedPermissionIds,
+        personality: spec.personality,
+        communicationStyle: spec.communicationStyle,
+        standingInstructions: spec.standingInstructions,
+        modelConfig: spec.modelPreference,
+        tasksCompleted: 0,
+        successfulTasks: 0,
+        promotionEligible: false,
+      });
+      workerCreated = true;
+      eventIds.push(
+        await emitEvent(ctx, {
+          workItemId: args.workItemId,
+          workerId,
+          eventType: "worker_created",
+          summary: `Created worker: ${spec.name} (${args.workerPresentation?.title ?? spec.title})`,
+          metadata: {
+            title: args.workerPresentation?.title ?? spec.title,
+            capabilityKeys: args.capabilityKeys,
+            toolPermissionIds: permissionCheck.allowedPermissionIds,
+          },
+        }),
+      );
+    }
+
+    const assignmentDraft = createAssignmentDraft({
+      workItemId: args.workItemId,
+      workerId,
+      responsibility: `Own delivery for capabilities: ${args.capabilityKeys.join(", ")}.`,
+    });
+    const assignmentId = await ctx.db.insert("assignments", {
+      workItemId: args.workItemId,
+      workerId,
+      responsibility: assignmentDraft.responsibility,
+      status: assignmentDraft.status,
+    });
+    await ctx.db.patch(workerId, { status: "working" });
+    eventIds.push(
+      await emitEvent(ctx, {
+        workItemId: args.workItemId,
+        workerId,
+        eventType: "assignment_started",
+        summary: "Additional assignment started.",
+        metadata: { assignmentId, staffingKind },
+      }),
+    );
+
+    return {
+      workItemId: args.workItemId,
+      workerId,
+      assignmentId,
+      staffingKind,
+      requiredCapabilityKeys: args.capabilityKeys,
+      workerCreated,
+      eventIds,
+    };
+}
+
+export const staffCapabilities = internalMutation({
+  args: {
+    workItemId: v.id("workItems"),
+    capabilityKeys: v.array(v.string()),
+    workerPresentation: v.optional(
+      v.object({
+        name: v.string(),
+        title: v.optional(v.string()),
+      }),
+    ),
+  },
+  returns: staffingResultValidator,
+  handler: persistStaffCapabilities,
 });
