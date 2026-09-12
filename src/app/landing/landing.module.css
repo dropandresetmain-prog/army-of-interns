@@ -1,0 +1,666 @@
+/* Landing page styles. Self-contained and defensive: globals.css sets bare
+   element rules (h1, h2, ul, li, button, section h2) for the workspace,
+   so every element used here declares what it needs explicitly.
+
+   Colours and fonts come entirely from the shared Roster design tokens
+   defined in globals.css (--aoi-*, --font-sans, --font-mono) — this module
+   has no private palette. */
+
+.page {
+  --shell: 70rem;
+
+  position: relative;
+  display: block;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: var(--aoi-bg);
+  color: var(--aoi-text);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
+/* Decorative accent wash plus a faint survey grid, for workspace feel. */
+.backdrop {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 46rem;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 26rem at 18% -6rem, var(--aoi-accent-s), transparent 70%),
+    radial-gradient(44rem 22rem at 88% 2rem, var(--aoi-accent-s), transparent 72%);
+}
+
+.grid {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 46rem;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--aoi-text) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--aoi-text) 6%, transparent) 1px, transparent 1px);
+  background-size: 5.5rem 5.5rem;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 82%);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 82%);
+}
+
+/* ---------- nav ---------- */
+
+.nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 0;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--aoi-text);
+  text-decoration: none;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navLinks li {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.navLink {
+  font-size: 0.86rem;
+  color: var(--aoi-t2);
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.navLink:hover {
+  color: var(--aoi-text);
+}
+
+@media (max-width: 46rem) {
+  .navLinks {
+    display: none;
+  }
+}
+
+/* ---------- shared section furniture ---------- */
+
+.section {
+  position: relative;
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 5.5rem 1.5rem;
+}
+
+.sectionDivider {
+  border-top: 1px solid var(--aoi-bdr);
+}
+
+.eyebrow {
+  display: block;
+  margin: 0 0 1.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--aoi-accent);
+}
+
+.h2 {
+  margin: 0 0 1rem;
+  max-width: 34ch;
+  font-size: clamp(1.65rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.021em;
+  color: var(--aoi-text);
+}
+
+.lede {
+  margin: 0;
+  max-width: 58ch;
+  font-size: 1.03rem;
+  line-height: 1.62;
+  color: var(--aoi-t2);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 4.5rem 1.5rem 5rem;
+}
+
+.h1 {
+  margin: 0 0 1.4rem;
+  max-width: 21ch;
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  font-weight: 600;
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+  color: var(--aoi-text);
+}
+
+.h1 em {
+  font-style: normal;
+  color: var(--aoi-accent);
+}
+
+.heroLede {
+  margin: 0 0 2.4rem;
+  max-width: 54ch;
+  font-size: clamp(1.04rem, 1.7vw, 1.2rem);
+  line-height: 1.6;
+  color: var(--aoi-t2);
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.72rem 1.25rem;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.btnPrimary {
+  background: var(--aoi-accent);
+  border: 1px solid var(--aoi-accent);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: color-mix(in srgb, var(--aoi-accent) 85%, black);
+  border-color: color-mix(in srgb, var(--aoi-accent) 85%, black);
+}
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid var(--aoi-bdr);
+  color: var(--aoi-text);
+}
+
+.btnGhost:hover {
+  border-color: var(--aoi-accent);
+  background: var(--aoi-accent-s);
+}
+
+/* Explicit tracks, not auto-fit: four items must land as 2x2 or 1x4, never
+   3 + an orphan with a visible empty cell. */
+.heroFacts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  margin: 4rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--aoi-bdr);
+  border: 1px solid var(--aoi-bdr);
+}
+
+.heroFacts li {
+  display: block;
+  margin: 0;
+  padding: 1.15rem 1.25rem;
+  border: 0;
+  background: var(--aoi-surf);
+}
+
+.factLabel {
+  display: block;
+  margin: 0 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--aoi-tm);
+}
+
+.factValue {
+  display: block;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--aoi-text);
+}
+
+@media (min-width: 62rem) {
+  .heroFacts {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ---------- card grids ---------- */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.15rem;
+  margin: 2.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: block;
+  margin: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 3px;
+  background: var(--aoi-surf);
+}
+
+.cardRule {
+  width: 1.75rem;
+  height: 2px;
+  margin: 0 0 1.1rem;
+  background: var(--aoi-accent);
+}
+
+.cardTitle {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  color: var(--aoi-text);
+}
+
+.cardBody {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.58;
+  color: var(--aoi-t2);
+}
+
+/* ---------- the loop ---------- */
+
+.flow {
+  margin: 3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0 0 1.7rem 3.4rem;
+  border: 0;
+}
+
+.step::before {
+  content: "";
+  position: absolute;
+  left: 0.95rem;
+  top: 2.1rem;
+  bottom: -0.2rem;
+  width: 1px;
+  background: var(--aoi-bdr);
+}
+
+.step:last-child::before {
+  display: none;
+}
+
+.stepNum {
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.95rem;
+  height: 1.95rem;
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 50%;
+  background: var(--aoi-bg);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--aoi-accent);
+}
+
+.stepTitle {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--aoi-text);
+}
+
+.stepBody {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.58;
+  color: var(--aoi-t2);
+}
+
+.branch {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.85rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.branch li {
+  display: block;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--aoi-bdr);
+  border-radius: 3px;
+  background: var(--aoi-surf);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--aoi-t2);
+}
+
+.branchKey {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--aoi-accent);
+}
+
+/* ---------- genericity proof ---------- */
+
+.proof {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 1.15rem;
+  margin: 2.75rem 0 0;
+}
+
+.proofCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.5rem;
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 3px;
+  background: var(--aoi-surf);
+}
+
+.proofSpine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem 0.25rem;
+}
+
+.proofSpineLine {
+  flex: 1;
+  width: 1px;
+  min-height: 1.5rem;
+  background: var(--aoi-bdr);
+}
+
+.proofEntry {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--aoi-accent);
+  border-radius: 2px;
+  background: var(--aoi-accent-s);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--aoi-text);
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 54rem) {
+  .proof {
+    grid-template-columns: 1fr;
+  }
+
+  .proofSpine {
+    flex-direction: row;
+    padding: 0.25rem 0;
+  }
+
+  .proofSpineLine {
+    flex: 1;
+    width: auto;
+    min-height: 0;
+    height: 1px;
+  }
+}
+
+.quote {
+  margin: 0;
+  font-size: 1.06rem;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--aoi-text);
+}
+
+.quoteWho {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: var(--aoi-tm);
+}
+
+.proofRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--aoi-bdr);
+}
+
+.proofLabel {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--aoi-tm);
+}
+
+.proofOut {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--aoi-text);
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tagRow li {
+  display: block;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 2px;
+  background: var(--aoi-surf-r);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--aoi-accent);
+}
+
+.proofFoot {
+  margin: 1.6rem 0 0;
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--aoi-tm);
+}
+
+/* ---------- rank ladder ---------- */
+
+.ladder {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.15rem;
+  margin: 2.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rank {
+  display: block;
+  margin: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--aoi-bdr);
+  border-top: 2px solid var(--aoi-accent);
+  border-radius: 3px;
+  background: var(--aoi-surf);
+}
+
+.rankChip {
+  display: block;
+  margin: 0 0 0.9rem;
+}
+
+/* ---------- messaging surface ---------- */
+
+.surfaceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 2.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surfaceRow li {
+  display: block;
+  margin: 0;
+  padding: 0.55rem 1.05rem;
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 999px;
+  background: var(--aoi-surf);
+  font-size: 0.88rem;
+  color: var(--aoi-text);
+}
+
+/* ---------- closing cta + footer ---------- */
+
+.ctaPanel {
+  padding: clamp(2rem, 5vw, 3.25rem);
+  border: 1px solid var(--aoi-bdr);
+  border-radius: 4px;
+  background:
+    radial-gradient(36rem 18rem at 12% -4rem, var(--aoi-accent-s), transparent 70%),
+    var(--aoi-surf);
+}
+
+.ctaPanel .h2 {
+  margin-bottom: 0.85rem;
+}
+
+.ctaPanel .ctaRow {
+  margin-top: 2rem;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 3.5rem;
+  border-top: 1px solid var(--aoi-bdr);
+  font-size: 0.84rem;
+  color: var(--aoi-tm);
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footerLinks li {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.footerLink {
+  color: var(--aoi-t2);
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  color: var(--aoi-text);
+}
+
+/* Both of these hold 3 or 6 items, so three tracks always fill evenly.
+   auto-fit would drop to two columns at tablet width and orphan a card. */
+@media (min-width: 50rem) {
+  .cardGrid,
+  .ladder {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page * {
+    transition: none !important;
+  }
+}
