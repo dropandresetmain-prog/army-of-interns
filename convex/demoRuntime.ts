@@ -18,6 +18,8 @@ import {
   interpretTenantVerificationFallback,
   isContractorDone,
   isPromotionRecommended,
+  isReadyToRank,
+  contractorSlotsRequired,
   looksLikeWorkRequest,
   parseOwnerCommand,
   parseStartRole,
@@ -680,7 +682,12 @@ async function persistContractorQuote(
     .withIndex("by_work_item", (q) => q.eq("workItemId", state.workItemId!))
     .take(20);
   const okQuotes = refreshed.filter((row) => row.extractStatus === "ok");
-  if (okQuotes.length < Math.min(3, vendorPeople.length) || vendorPeople.length === 0) {
+  if (
+    !isReadyToRank({
+      joinedContractors: vendorPeople.length,
+      recordedQuotes: okQuotes.length,
+    })
+  ) {
     return {
       handled: true,
       outbounds: [{ personId, chatId, body: "Got it — recorded your quote." }],
@@ -835,7 +842,7 @@ async function handleTenantDiagnosis(
       outbounds: [
         {
           chatId,
-          body: "Vendor sourcing is staffed, but no contractors are registered. Ask three people to send /start contractor.",
+          body: "Vendor sourcing is staffed, but no contractor has joined yet. One contractor QR scan is enough to continue.",
         },
       ],
     };
@@ -1543,10 +1550,9 @@ export const getCommandCentreSnapshot = query({
             contractorPeople.filter((person) => telegramReady(person)).length,
             3,
           ),
-          required: 3,
+          required: contractorSlotsRequired(),
         },
       },
     };
   },
 });
-
