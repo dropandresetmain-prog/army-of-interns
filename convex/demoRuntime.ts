@@ -1268,7 +1268,12 @@ export const getCommandCentreSnapshot = query({
       workers.map((worker) => [worker._id, presentationWorkerId(worker.name, worker._id)]),
     );
 
-    const workItem = state?.workItemId ? await ctx.db.get(state.workItemId) : null;
+    const workItems = await ctx.db.query("workItems").take(50);
+    const workItem = state?.workItemId
+      ? await ctx.db.get(state.workItemId)
+      : workItems
+          .filter((item) => item.status !== "cancelled")
+          .sort((a, b) => b._creationTime - a._creationTime)[0] ?? null;
     const assignments = workItem
       ? await ctx.db
           .query("assignments")
