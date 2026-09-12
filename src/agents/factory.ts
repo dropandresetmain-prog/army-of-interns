@@ -55,6 +55,8 @@ function compactSnapshot(snapshot: RuntimeSnapshot): string {
     messages,
     events,
     pendingStaffingCapabilityKeys: snapshot.pendingStaffingCapabilityKeys,
+    joinedContractorCount: snapshot.joinedContractorCount ?? 0,
+    quotesNeeded: snapshot.quotesNeeded ?? 1,
   });
 }
 
@@ -69,6 +71,7 @@ function sharedRules(): string {
     "If something remains uncertain after two clarification turns, make the safest reasonable assumption, proceed, or escalate only if authority is genuinely required.",
     "Do not invent facts, prices, or approvals.",
     "Compose concise human-facing Telegram messages yourself. Keep them to 1-2 sentences. Do not narrate agent architecture.",
+    "send_message reaches exactly one person. Tenant copy stays with the tenant. Owner copy stays with the owner. Contractor sourcing uses solicit_options, not send_message.",
     "Only use tools you actually have. Application code enforces permissions, approvals, and ranking.",
     "Call at most three tools, then stop. Do not re-inspect or repeat the same message.",
   ].join("\n");

@@ -28,6 +28,7 @@ describe("inbound clarification limits", () => {
     expect(prompt).toMatch(/do not interview/i);
     expect(prompt).toMatch(/record immediately/);
     expect(prompt).toMatch(/Maximum two clarification turns/);
+    expect(prompt).toMatch(/One contractor is enough/);
   });
 
   it("tells Alex to act on clear owner intent without redundant confirmation", () => {

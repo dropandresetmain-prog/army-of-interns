@@ -181,6 +181,7 @@ describe("shared worker instructions", () => {
     expect(text).toMatch(/at most two clarification turns/);
     expect(text).toMatch(/1-2 sentences/);
     expect(text).toMatch(/use tools immediately/);
+    expect(text).toMatch(/exactly one person/);
   });
 
   it("tells Alex not to seek redundant confirmation", () => {

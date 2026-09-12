@@ -114,7 +114,7 @@ export function CommandCentre({
   const ready =
     state.participants.ownerReady &&
     state.participants.tenant.joined >= state.participants.tenant.required &&
-    state.participants.contractors.joined >= state.participants.contractors.required;
+    state.participants.contractors.joined >= 1;
   const work = state.workItem;
   const assignedNames =
     work?.assignedWorkerIds

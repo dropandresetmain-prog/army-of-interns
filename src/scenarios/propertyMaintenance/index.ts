@@ -14,6 +14,14 @@ export {
   SEEDED_OPS_SUCCESSFUL_TASKS,
   TENANT_FOLLOW_UP,
 } from "./identities";
+export {
+  contractorSlotsRequired,
+  isContractorCrewReady,
+  isReadyToRank,
+  MAX_CONTRACTOR_SLOTS,
+  MIN_CONTRACTORS_TO_RUN,
+  quotesNeededToRank,
+} from "./crew";
 export type { DemoPhase, DemoRole } from "./identities";
 export { parseOwnerCommand, isContractorDone, looksLikeWorkRequest } from "./commands";
 export { extractContractorQuote, parseLlmQuoteJson } from "./extractQuote";

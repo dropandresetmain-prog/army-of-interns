@@ -9,6 +9,7 @@ import {
   canResolveApproval,
   canVerifyOutcome,
 } from "../src/agents/authority";
+import { normalizeRoleType, resolveSendRole } from "../src/agents/messageTargeting";
 import {
   canConfirmContractor,
   DEMO_BUDGET,
@@ -18,7 +19,9 @@ import {
   evaluateContractorOptions,
   extractContractorQuote,
   isPromotionRecommended,
+  isReadyToRank,
   PROMOTION_SUCCESS_THRESHOLD,
+  quotesNeededToRank,
   SEEDED_OPS_SUCCESSFUL_TASKS,
 } from "../src/scenarios/propertyMaintenance";
 import { persistIntakeAndStaff, persistStaffCapabilities } from "./workforce";
@@ -77,6 +80,27 @@ function presentationForKeys(keys: string[]) {
     };
   }
   return undefined;
+}
+
+async function persistNamedCapabilities(
+  ctx: MutationCtx,
+  workItemId: Id<"workItems">,
+  capabilityKeys: string[],
+) {
+  const staffed = await persistStaffCapabilities(ctx, {
+    workItemId,
+    capabilityKeys,
+    workerPresentation: presentationForKeys(capabilityKeys),
+  });
+  const worker = await ctx.db.get(staffed.workerId);
+  const presentation = presentationForKeys(capabilityKeys);
+  if (worker && presentation) {
+    await ctx.db.patch(worker._id, {
+      name: presentation.name,
+      title: presentation.title,
+    });
+  }
+  return staffed;
 }
 
 function asStringArray(value: unknown): string[] {
@@ -205,6 +229,8 @@ const snapshotValidator = v.object({
   pendingStaffingCapabilityKeys: v.array(v.string()),
   selectedContractorPersonId: v.optional(v.string()),
   tenantPersonId: v.optional(v.string()),
+  joinedContractorCount: v.number(),
+  quotesNeeded: v.number(),
 });
 
 export const resetProofState = internalMutation({
@@ -401,6 +427,14 @@ export const loadRuntimeContext = internalQuery({
         typeof state?.metadata.tenantPersonId === "string"
           ? state.metadata.tenantPersonId
           : undefined,
+      joinedContractorCount: people.filter(
+        (person) => person.active && person.roleType === "contractor" && person.telegramChatId,
+      ).length,
+      quotesNeeded: quotesNeededToRank(
+        people.filter(
+          (person) => person.active && person.roleType === "contractor" && person.telegramChatId,
+        ).length,
+      ),
     };
   },
 });
@@ -444,19 +478,7 @@ export const staffWork = internalMutation({
     const state = await getOrCreateDemoState(ctx);
     const keys = args.capabilityKeys ?? [];
     if (state.workItemId && keys.length > 0) {
-      const staffed = await persistStaffCapabilities(ctx, {
-        workItemId: state.workItemId,
-        capabilityKeys: keys,
-        workerPresentation: presentationForKeys(keys),
-      });
-      const worker = await ctx.db.get(staffed.workerId);
-      const presentation = presentationForKeys(keys);
-      if (worker && presentation) {
-        await ctx.db.patch(worker._id, {
-          name: presentation.name,
-          title: presentation.title,
-        });
-      }
+      const staffed = await persistNamedCapabilities(ctx, state.workItemId, keys);
       if (keys.includes("vendor_sourcing")) {
         await ctx.db.patch(state._id, {
           procurementWorkerId: staffed.workerId,
@@ -468,9 +490,11 @@ export const staffWork = internalMutation({
           },
         });
       }
+      const named = presentationForKeys(keys);
+      const staffedWorker = await ctx.db.get(staffed.workerId);
       return {
         workerId: staffed.workerId,
-        workerName: presentation?.name ?? worker?.name ?? "Worker",
+        workerName: named?.name ?? staffedWorker?.name ?? "Worker",
         workItemId: staffed.workItemId,
         assignmentId: staffed.assignmentId,
         capabilityKeys: staffed.requiredCapabilityKeys,
@@ -534,14 +558,31 @@ export const requestStaffing = internalMutation({
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
-    await ctx.db.patch(state._id, {
-      metadata: {
-        ...state.metadata,
-        pendingManagerFollowUp: true,
-        pendingStaffingCapabilityKeys: args.capabilityKeys,
-        staffingReason: args.reason,
-      },
-    });
+    const pendingMetadata = {
+      ...state.metadata,
+      pendingManagerFollowUp: true,
+      pendingStaffingCapabilityKeys: args.capabilityKeys,
+      staffingReason: args.reason,
+    };
+    // Staff Daniel immediately so the board does not wait on the manager LLM.
+    if (state.workItemId && args.capabilityKeys.includes("vendor_sourcing")) {
+      const staffed = await persistNamedCapabilities(
+        ctx,
+        state.workItemId,
+        args.capabilityKeys,
+      );
+      await ctx.db.patch(state._id, {
+        procurementWorkerId: staffed.workerId,
+        procurementAssignmentId: staffed.assignmentId,
+        metadata: {
+          ...pendingMetadata,
+          pendingManagerFollowUp: false,
+          pendingStaffingCapabilityKeys: [],
+        },
+      });
+      return { ok: true };
+    }
+    await ctx.db.patch(state._id, { metadata: pendingMetadata });
     return { ok: true };
   },
 });
@@ -567,6 +608,10 @@ export const sendIntent = internalMutation({
     roleType: v.optional(v.string()),
     demoCallsign: v.optional(v.string()),
     body: v.string(),
+    agentKind: v.optional(
+      v.union(v.literal("manager"), v.literal("operations"), v.literal("procurement")),
+    ),
+    inboundPersonId: v.optional(v.id("people")),
   },
   returns: v.object({
     personId: v.optional(v.id("people")),
@@ -574,40 +619,63 @@ export const sendIntent = internalMutation({
     body: v.string(),
   }),
   handler: async (ctx, args) => {
-    let person = args.personId ? await ctx.db.get(args.personId) : null;
+    const state = await getOrCreateDemoState(ctx);
+    const inbound = args.inboundPersonId ? await ctx.db.get(args.inboundPersonId) : null;
+    const requestedPerson = args.personId ? await ctx.db.get(args.personId) : null;
+    const resolved = resolveSendRole({
+      kind: args.agentKind ?? "manager",
+      phase: state.phase,
+      requestedRoleType: requestedPerson?.roleType ?? args.roleType,
+      inboundRoleType: inbound?.roleType,
+    });
+    if ("error" in resolved) {
+      return { body: args.body };
+    }
+
+    const roleType = resolved.roleType;
+    let person =
+      requestedPerson && normalizeRoleType(requestedPerson.roleType) === roleType
+        ? requestedPerson
+        : null;
+
     if (!person && args.demoCallsign) {
       person = await ctx.db
         .query("people")
         .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", args.demoCallsign!))
         .first();
     }
-    if (!person && args.roleType === "contractor") {
-      const state = await getOrCreateDemoState(ctx);
+    if (
+      !person &&
+      inbound &&
+      normalizeRoleType(inbound.roleType) === roleType
+    ) {
+      person = inbound;
+    }
+    if (!person && roleType === "contractor") {
       if (state.selectedContractorPersonId) {
         person = await ctx.db.get(state.selectedContractorPersonId);
       }
     }
-    if (!person && args.roleType === "tenant") {
-      const state = await getOrCreateDemoState(ctx);
+    if (!person && roleType === "tenant") {
       if (typeof state.metadata.tenantPersonId === "string") {
         person = await ctx.db.get(state.metadata.tenantPersonId as Id<"people">);
       }
     }
-    if (!person && (args.roleType === "business_owner" || args.roleType === "owner")) {
+    if (!person && roleType === "business_owner") {
       person = await ctx.db
         .query("people")
         .withIndex("by_demo_callsign", (q) => q.eq("demoCallsign", "OWNER"))
         .first();
     }
-    if (!person && args.roleType) {
+    if (!person) {
       person =
         (await ctx.db
           .query("people")
-          .withIndex("by_role_type", (q) => q.eq("roleType", args.roleType!))
+          .withIndex("by_role_type", (q) => q.eq("roleType", roleType))
           .first()) ?? null;
     }
-    if (!person) {
-      throw new ConvexError("No matching stakeholder to message.");
+    if (!person || normalizeRoleType(person.roleType) !== roleType) {
+      return { body: args.body };
     }
     return {
       personId: person._id,
@@ -629,7 +697,14 @@ export const solicitOptions = internalMutation({
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
     const vendorPeople = await contractors(ctx);
-    await ctx.db.patch(state._id, { phase: "soliciting_quotes" });
+    if (vendorPeople.length === 0) {
+      return [];
+    }
+    const { recommendationReportedAt: _closedRound, ...roundMetadata } = state.metadata;
+    await ctx.db.patch(state._id, {
+      phase: "soliciting_quotes",
+      metadata: roundMetadata,
+    });
     return vendorPeople
       .filter((person) => person.telegramChatId)
       .map((person) => ({
@@ -652,6 +727,8 @@ export const recordOption = internalMutation({
     ok: v.boolean(),
     needClarification: v.boolean(),
     recordedCount: v.number(),
+    quotesNeeded: v.number(),
+    readyToEvaluate: v.boolean(),
     personId: v.optional(v.id("people")),
   }),
   handler: async (ctx, args) => {
@@ -703,10 +780,19 @@ export const recordOption = internalMutation({
       .query("contractorQuotes")
       .withIndex("by_work_item", (q) => q.eq("workItemId", state.workItemId!))
       .take(20);
+    const recordedCount = refreshed.filter((row) => row.extractStatus === "ok").length;
+    const quotesNeeded = quotesNeededToRank(vendorPeople.length);
     return {
       ok: extractStatus === "ok",
       needClarification: extractStatus === "failed",
-      recordedCount: refreshed.filter((row) => row.extractStatus === "ok").length,
+      recordedCount,
+      quotesNeeded,
+      readyToEvaluate:
+        !state.metadata.recommendationReportedAt &&
+        isReadyToRank({
+          joinedContractors: vendorPeople.length,
+          recordedQuotes: recordedCount,
+        }),
       personId,
     };
   },
@@ -790,11 +876,18 @@ export const reportRecommendation = internalMutation({
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
     const state = await getOrCreateDemoState(ctx);
+    // One recommendation per sourcing round. record_option reports automatically once every
+    // joined contractor has quoted, so a later agent-initiated report_recommendation must not
+    // re-arm the manager follow-up or the owner receives a second approval for the same work.
+    if (state.metadata.recommendationReportedAt) {
+      return { ok: true };
+    }
     await ctx.db.patch(state._id, {
       metadata: {
         ...state.metadata,
         pendingManagerFollowUp: true,
         recommendationSummary: args.summary,
+        recommendationReportedAt: Date.now(),
       },
     });
     return { ok: true };
@@ -825,6 +918,16 @@ export const requestApproval = internalMutation({
     const winner = quotes.find((row) => row.personId === selectedId && row.viable);
     if (!selectedId || !winner) {
       throw new ConvexError("No viable ranked contractor is ready for approval.");
+    }
+    const existingApprovals = await ctx.db
+      .query("approvals")
+      .withIndex("by_work_item", (q) => q.eq("workItemId", state.workItemId!))
+      .collect();
+    const alreadyPending = existingApprovals.find(
+      (row) => row.status === "pending" && row.actionType === "confirm_contractor_spend",
+    );
+    if (alreadyPending) {
+      return { approvalId: alreadyPending._id };
     }
     const approvalId = await ctx.db.insert("approvals", {
       workItemId: state.workItemId,

@@ -15,7 +15,7 @@ export function inboundAgentPrompt(input: {
         "",
         "The Business Owner is responding to the current pending spend approval.",
         "Interpret their natural-language intent. Exact APPROVE/REJECT are optional shortcuts, not required.",
-        'If they clearly approve, call resolve_approval({ decision: "approved" }), then send_message the selected contractor and the tenant.',
+        'If they clearly approve, call resolve_approval({ decision: "approved" }), then send_message the selected contractor and separately send_message the tenant. Do not copy either message to anyone else.',
         "Ask the selected contractor to report when the work is finished. Do not notify any contractor unless the approval is approved.",
         'If they clearly reject, call resolve_approval({ decision: "rejected" }) and make no external commitment.',
         'Clear examples: "yeah C is fine, go ahead" is approve. "nah too expensive, find someone else" is reject.',
@@ -77,6 +77,7 @@ export function inboundAgentPrompt(input: {
     'If both can reasonably be inferred (for example "Can come around 4, probably 120 bucks."), record immediately.',
     "If one critical field is missing, ask one concise clarification, then record once they answer.",
     "Maximum two clarification turns total. Then record or evaluate using the available information.",
+    "Rank as soon as every joined contractor has a quote. One contractor is enough. Do not wait for empty A/B/C slots.",
   ].join("\n");
 }
 

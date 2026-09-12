@@ -88,6 +88,8 @@ export interface RuntimeSnapshot {
   pendingStaffingCapabilityKeys: string[];
   selectedContractorPersonId?: string;
   tenantPersonId?: string;
+  joinedContractorCount?: number;
+  quotesNeeded?: number;
 }
 
 export interface OutboundMessage {

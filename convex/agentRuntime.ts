@@ -7,6 +7,7 @@ import type { AgentBridge } from "../src/agents/bridge";
 import { activityForFallback, activityForTool } from "../src/agents/events";
 import { createManagerAgent, createWorkerAgent } from "../src/agents/factory";
 import { createOpenRouterProvider } from "../src/agents/openRouter";
+import { kindFromWorker } from "../src/agents/messageTargeting";
 import { inboundAgentPrompt, managerFollowUpPrompt } from "../src/agents/prompts";
 import { selectAgentKind } from "../src/agents/routing";
 import type { RuntimeSnapshot } from "../src/agents/types";
@@ -233,16 +234,16 @@ async function runInboundAgents(
     snapshot = (await ctx.runQuery(internal.agentState.loadRuntimeContext, {})) as RuntimeSnapshot;
   }
 
-  if (findWorker(snapshot, "procurement") && snapshot.phase !== "awaiting_owner_approval") {
+  if (findWorker(snapshot, "procurement") && snapshot.phase === "awaiting_tenant_diagnosis") {
     const procurement = findWorker(snapshot, "procurement");
-    if (procurement && (snapshot.quotes.length === 0 || snapshot.phase === "awaiting_tenant_diagnosis")) {
+    if (procurement && snapshot.quotes.length === 0) {
       const resumed = await runKind(ctx, {
         kind: "procurement",
         snapshot,
         provider,
         model,
         prompt:
-          "You are staffed for vendor sourcing. Call solicit_options once with a concise price-and-availability ask. Do not evaluate or report until contractors reply. Then stop.",
+          "You are staffed for vendor sourcing. Call solicit_options once with a concise price-and-availability ask. Do not evaluate until every joined contractor has replied. One contractor is enough. Then stop.",
         chatId: input.chatId,
         inboundPersonId: input.personId,
       });
@@ -360,9 +361,11 @@ function createBridge(
     chatId?: string;
     body: string;
   }) => {
-    const resolvedChatId = target.chatId ?? chatId;
+    if (!target.chatId) {
+      return;
+    }
     await ctx.runAction(internal.telegram.sendToChat, {
-      chatId: resolvedChatId,
+      chatId: target.chatId,
       body: target.body,
       personId: target.personId,
     });
@@ -418,6 +421,8 @@ function createBridge(
         roleType: input.roleType,
         demoCallsign: input.demoCallsign,
         body: input.body,
+        agentKind: kindFromWorker(snapshot.actor),
+        inboundPersonId,
       })) as { personId?: Id<"people">; chatId?: string; body: string };
       if (target.chatId) {
         await sendResolved(target);
@@ -433,6 +438,15 @@ function createBridge(
       for (const target of targets) {
         await sendResolved(target);
       }
+      if (targets.length === 0) {
+        const wait = (await ctx.runMutation(internal.agentState.sendIntent, {
+          roleType: "tenant",
+          body: "Daniel is ready, but no contractor has joined yet. One contractor QR scan is enough to continue.",
+          agentKind: "operations",
+          inboundPersonId,
+        })) as { personId?: Id<"people">; chatId?: string; body: string };
+        await sendResolved(wait);
+      }
       await refresh();
       return { contacted: targets.length };
     },
@@ -447,8 +461,20 @@ function createBridge(
         ok: boolean;
         needClarification: boolean;
         recordedCount: number;
+        quotesNeeded: number;
+        readyToEvaluate: boolean;
       };
       await refresh();
+      // The bridge is the single owner of automatic ranking and reporting. agentState gates
+      // readyToEvaluate to one sourcing round, and reportRecommendation is idempotent, so a
+      // model that also calls evaluate_options/report_recommendation cannot double-report.
+      if (result.ok && result.readyToEvaluate) {
+        await bridge.evaluateOptions();
+        await bridge.reportRecommendation({
+          summary: `Ranked ${result.recordedCount} of ${result.quotesNeeded} joined contractor quotes.`,
+        });
+        await refresh();
+      }
       return result;
     },
     evaluateOptions: async () => {

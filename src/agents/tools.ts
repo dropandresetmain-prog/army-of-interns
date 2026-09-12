@@ -131,7 +131,7 @@ export function createSendMessageTool(bridge: AgentBridge): Tool {
   return tool({
     name: "send_message",
     description:
-      "Send a concise Telegram message to a stakeholder. Compose the body yourself.",
+      "Send one concise Telegram message to exactly one stakeholder. Set roleType to tenant, business_owner, or contractor. This never broadcasts.",
     parameters: z.object({
       body: z.string(),
       roleType: z.string().optional(),
