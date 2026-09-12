@@ -698,6 +698,9 @@ export const evaluateOptions = internalMutation({
       .take(20);
     const vendorPeople = await contractors(ctx);
     const okQuotes = quotes.filter((row) => row.extractStatus === "ok");
+    if (okQuotes.length === 0) {
+      return { winnerPersonId: null, ranked: [] };
+    }
     const ranked = evaluateContractorOptions(
       okQuotes.map((row) => ({
         personId: row.personId,
@@ -780,6 +783,9 @@ export const requestApproval = internalMutation({
       .withIndex("by_work_item", (q) => q.eq("workItemId", state.workItemId!))
       .take(20);
     const winner = quotes.find((row) => row.personId === selectedId && row.viable);
+    if (!selectedId || !winner) {
+      throw new ConvexError("No viable ranked contractor is ready for approval.");
+    }
     const approvalId = await ctx.db.insert("approvals", {
       workItemId: state.workItemId,
       requestedFromPersonId: owner._id,

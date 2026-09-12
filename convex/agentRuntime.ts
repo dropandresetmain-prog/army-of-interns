@@ -236,7 +236,7 @@ async function runInboundAgents(
         provider,
         model,
         prompt:
-          "You are staffed for vendor sourcing. Contact the available contractors once with a concise price-and-availability ask. Then stop.",
+          "You are staffed for vendor sourcing. Call solicit_options once with a concise price-and-availability ask. Do not evaluate or report until contractors reply. Then stop.",
         chatId: input.chatId,
         inboundPersonId: input.personId,
       });
