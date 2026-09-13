@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Generic worker bot portraits: supplied definitions when known, deterministic visual identity otherwise. */
+.worker-avatar-bot { --bot-status:var(--olive); position:relative; display:grid; float:right; width:54px; height:54px; place-items:center; margin:-7px -2px 3px 11px; isolation:isolate; }
+.worker-avatar-bot__aura { position:absolute; z-index:0; width:46px; height:46px; border:1px solid color-mix(in srgb,var(--bot-status) 46%,transparent); border-radius:50%; box-shadow:0 0 0 5px color-mix(in srgb,var(--bot-status) 10%,transparent),0 0 20px color-mix(in srgb,var(--bot-status) 17%,transparent); }
+.worker-avatar-bot__orbit { position:absolute; z-index:0; width:53px; height:22px; border:1px solid color-mix(in srgb,var(--bot-status) 54%,transparent); border-radius:50%; transform:rotate(-26deg); animation:bot-orbit 6.4s linear infinite; }
+.worker-avatar-bot__orb { position:relative; z-index:1; display:block; width:40px; height:40px; overflow:hidden; border:1px solid color-mix(in srgb,var(--bot-status) 66%,#fff); border-radius:50%; background:radial-gradient(circle at 29% 20%,#fff 0 5%,transparent 17%),linear-gradient(145deg,#fff 0%,var(--bot-body) 54%,color-mix(in srgb,var(--bot-body) 72%,#111827) 100%); box-shadow:inset -7px -8px 10px #0003,inset 5px 5px 9px #fff9,0 6px 15px #0004; animation:bot-float 3.8s ease-in-out infinite; }
+.worker-avatar-bot__glint { position:absolute; top:5px; left:8px; width:7px; height:13px; border-radius:50%; background:#fff9; transform:rotate(27deg); }
+.worker-avatar-bot__eye { position:absolute; top:14px; width:5px; height:13px; border-radius:50%; background:var(--bot-eyes); box-shadow:0 0 0 1px #fff8; transition:transform .55s ease,width .55s ease,height .55s ease,border-radius .55s ease; }
+.worker-avatar-bot__eye--left { left:11px; }.worker-avatar-bot__eye--right { right:11px; }
+.worker-avatar-bot__signal { position:absolute; z-index:2; top:2px; right:2px; width:9px; height:9px; border:2px solid var(--panel); border-radius:50%; background:var(--bot-status); box-shadow:0 0 0 3px color-mix(in srgb,var(--bot-status) 18%,transparent); }
+.worker-avatar-bot--thinking { --bot-status:var(--gold); }.worker-avatar-bot--using_tool { --bot-status:#77b6e5; }.worker-avatar-bot--waiting_human { --bot-status:#8eb6d7; }.worker-avatar-bot--delegating { --bot-status:#b6a36c; }.worker-avatar-bot--blocked { --bot-status:var(--danger); }.worker-avatar-bot--complete { --bot-status:#88b989; }.worker-avatar-bot--idle { --bot-status:var(--olive); }
+.worker-avatar-bot--thinking .worker-avatar-bot__aura,.worker-avatar-bot--using_tool .worker-avatar-bot__aura,.worker-avatar-bot--delegating .worker-avatar-bot__aura { animation:bot-aura 1.5s ease-in-out infinite; }
+.worker-avatar-bot--thinking .worker-avatar-bot__eye--left { transform:translate(-1px,-3px) rotate(8deg); }.worker-avatar-bot--thinking .worker-avatar-bot__eye--right { transform:translate(-1px,-3px) rotate(-8deg); }
+.worker-avatar-bot--using_tool .worker-avatar-bot__eye { top:18px; width:8px; height:4px; border-radius:999px; transform:rotate(-8deg); }.worker-avatar-bot--using_tool .worker-avatar-bot__eye--right { transform:rotate(8deg); }
+.worker-avatar-bot--waiting_human .worker-avatar-bot__orb { animation:bot-float 3.8s ease-in-out infinite,bot-wait 2.1s ease-in-out infinite; }.worker-avatar-bot--blocked .worker-avatar-bot__orbit { animation:none; border-style:dashed; }.worker-avatar-bot--complete .worker-avatar-bot__orbit { border-color:#88b989; animation:bot-orbit 3.8s linear infinite; }
+@keyframes bot-orbit { to { transform:rotate(334deg); } } @keyframes bot-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } } @keyframes bot-aura { 0%,100% { box-shadow:0 0 0 5px color-mix(in srgb,var(--bot-status) 10%,transparent),0 0 16px color-mix(in srgb,var(--bot-status) 12%,transparent); } 50% { box-shadow:0 0 0 8px color-mix(in srgb,var(--bot-status) 4%,transparent),0 0 28px color-mix(in srgb,var(--bot-status) 28%,transparent); } } @keyframes bot-wait { 50% { filter:saturate(.55); } }
+@media (prefers-reduced-motion: reduce) { .worker-avatar-bot__orb,.worker-avatar-bot__orbit,.worker-avatar-bot__aura { animation:none!important; } }
+
 /* Alex's supplied Strobi definition rendered locally so the landlord page has no private-package dependency. */
 [data-theme] .landlord-header-actions { display:flex; align-items:center; gap:8px; }
 [data-theme] .landlord-avatar-scene { position:relative; height:244px; margin-top:8px; overflow:hidden; isolation:isolate; background:radial-gradient(circle at 50% 48%,var(--aoi-gold-s),transparent 58%); }
